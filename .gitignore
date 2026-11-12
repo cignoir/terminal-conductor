@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Cargo workspace build output
+/target/
+
+# Signing keys and local env (never commit)
+*.key
+*.key.pub
+*.pem
+*.pfx
+.env
+.env.*
+
+# Local databases (e.g. a copied conversation index) and per-user tool settings
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+.claude/settings.local.json

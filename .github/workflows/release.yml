@@ -1,0 +1,133 @@
+name: Release
+
+# Pushing a v* tag builds and signs the installer and publishes it to GitHub
+# Releases together with latest.json, which the in-app updater reads from
+#   https://github.com/<owner>/<repo>/releases/latest/download/latest.json
+on:
+  push:
+    tags:
+      - "v*"
+
+# Run releases one at a time so two of them never race for "latest".
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # If the tag and the app's version disagree, latest.json advertises a
+  # version the installer doesn't have and every client's update silently
+  # stalls. Stop before building.
+  version-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare the tag with the app's versions
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          CONF=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          PKG=$(node -p "require('./package.json').version")
+          CARGO=$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -n 1)
+          echo "tag=$TAG tauri.conf.json=$CONF package.json=$PKG Cargo.toml=$CARGO"
+          if [ "$TAG" != "$CONF" ] || [ "$TAG" != "$PKG" ] || [ "$TAG" != "$CARGO" ]; then
+            echo "::error::Tag v$TAG does not match the app's versions (use npm run bump to cut a release)"
+            exit 1
+          fi
+
+  build-and-publish:
+    needs: version-consistency
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Release notes come from git log since the previous tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: cargo test -p tc-core
+
+      - name: Check the signing key is set
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            Write-Output "::error::Secret TAURI_SIGNING_PRIVATE_KEY is not set (the updater could not verify this release)"
+            exit 1
+          }
+
+      - name: Build & sign
+        run: npx tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      # Shown under "What's new" in the app's update panel and as the release body.
+      - name: Release notes
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          # The first tag has no predecessor; use the whole history then.
+          $previous = try { git describe --tags --abbrev=0 "$tag^" 2>$null } catch { $null }
+          $range = if ($LASTEXITCODE -eq 0 -and $previous) { "$previous..$tag" } else { $tag }
+          $notes = (git log --no-merges -n 20 --invert-grep --grep='^chore(release): ' --format='- %s' $range) -join "`n"
+          if ($LASTEXITCODE -ne 0) { throw "git log $range failed" }
+          if ([string]::IsNullOrWhiteSpace($notes)) { $notes = "- $tag" }
+          Set-Content -Path notes.txt -Value $notes -Encoding utf8NoBOM
+          Write-Host $notes
+          exit 0
+
+      # Upload everything to a draft first, then publish. Drafts are not
+      # "latest", so clients never see a latest.json whose installer is missing.
+      - name: Publish to GitHub Releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $nsis = "target/release/bundle/nsis"
+          $exe = Get-ChildItem "$nsis/*-setup.exe" | Select-Object -First 1
+          $sigFile = Get-ChildItem "$nsis/*-setup.exe.sig" | Select-Object -First 1
+          if (-not $exe) { throw "installer not found in $nsis" }
+          if (-not $sigFile) { throw "*.sig not found (check TAURI_SIGNING_PRIVATE_KEY)" }
+
+          $json = [ordered]@{
+            version   = $version
+            notes     = (Get-Content notes.txt -Raw).Trim()
+            pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = (Get-Content $sigFile.FullName -Raw).Trim()
+                url       = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$($exe.Name)"
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+          Set-Content -Path latest.json -Value $json -Encoding utf8NoBOM
+
+          # pwsh does not stop when an external command fails; check each one.
+          gh release create $tag --draft --title "Terminal Conductor $tag" --notes-file notes.txt `
+            $exe.FullName $sigFile.FullName latest.json
+          if ($LASTEXITCODE -ne 0) { throw "creating the draft release failed" }
+          gh release edit $tag --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw "publishing the release failed (it is left as a draft)" }
+          Write-Host "released $tag"

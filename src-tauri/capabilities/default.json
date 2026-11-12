@@ -1,0 +1,29 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Main window. The updater is reached only through the app commands updater_check/download/install, so updater:default is deliberately not granted (it would let the webview install without shutting panes down first).",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "dialog:default",
+    "notification:default",
+    "core:window:allow-request-user-attention",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-title",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "opener:allow-reveal-item-in-dir",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "**"
+        }
+      ]
+    }
+  ]
+}
