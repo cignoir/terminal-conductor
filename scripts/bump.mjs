@@ -60,6 +60,28 @@ if (!dryRun) {
   if (git("tag", "--list", tag)) die(`tag ${tag} already exists`);
 }
 
+// The release runner has a newer npm than many machines, and it rejects a
+// lockfile that an older npm wrote without some optional dependencies
+// (v0.1.0 and v0.1.2 failed this way). Check with the latest npm first.
+console.log("  checking package-lock.json with the latest npm...");
+try {
+  execFileSync(
+    "npx",
+    ["-y", "npm@latest", "ci", "--dry-run", "--ignore-scripts", "--no-audit", "--no-fund"],
+    { cwd: root, stdio: "pipe", shell: process.platform === "win32" },
+  );
+} catch (e) {
+  const out = `${e.stdout ?? ""}${e.stderr ?? ""}`
+    .split("\n")
+    .filter((l) => /npm error/.test(l))
+    .slice(0, 4)
+    .join("\n");
+  die(
+    `the latest npm rejects package-lock.json; regenerate it with\n` +
+      `  npx -y npm@latest install --package-lock-only\n${out}`,
+  );
+}
+
 function bumpJson(path, label) {
   const raw = readFileSync(path, "utf8");
   const replaced = raw.replace(/("version"\s*:\s*")\d+\.\d+\.\d+(")/, `$1${next}$2`);

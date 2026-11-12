@@ -79,6 +79,8 @@ npm run bump -- --dry-run        # show what would change; touches nothing
 ```
 
 - Run it on a clean working tree; it stops if there are uncommitted changes.
+- Before tagging it checks package-lock.json with the latest npm (`npm ci --dry-run`). The release runner's npm is newer than many machines' and rejects a lockfile that an older npm wrote without some optional dependencies; if the check fails, run `npx -y npm@latest install --package-lock-only` and commit the result.
+- Wait for the CI run on `main` to pass before pushing the tag.
 - Without `--push`: `git push origin HEAD && git push origin v<version>`.
 
 ## Trying the update flow locally
