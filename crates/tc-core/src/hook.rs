@@ -7,13 +7,29 @@ use std::time::{Duration, Instant};
 
 pub const PANE_ENV: &str = "TC_PANE_ID";
 
+/// The pipe for this user and this executable. The hook client is the same
+/// executable as the app, so both derive the same name; a development build
+/// and an installed copy running side by side get different pipes and never
+/// take each other's hook messages.
 pub fn pipe_name() -> String {
     let user = std::env::var("USERNAME").unwrap_or_else(|_| "user".into());
     let safe: String = user
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
         .collect();
-    format!(r"\\.\pipe\terminal-conductor-{safe}")
+    format!(r"\\.\pipe\terminal-conductor-{safe}-{:016x}", exe_hash())
+}
+
+/// FNV-1a of the executable's canonical, lowercased path. Canonicalizing
+/// matters: hooks may start the exe through its 8.3 short path.
+fn exe_hash() -> u64 {
+    let path = std::env::current_exe()
+        .and_then(std::fs::canonicalize)
+        .map(|p| p.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    path.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+        (h ^ b as u64).wrapping_mul(0x0100_0000_01b3)
+    })
 }
 
 /// Entry point for the `hook` subcommand. Never fails loudly: whatever
