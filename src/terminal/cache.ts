@@ -116,6 +116,11 @@ class TermEntry {
     this.term.attachCustomKeyEventHandler((e) => this.onKey(e));
     this.el.addEventListener("contextmenu", (e) => {
       e.preventDefault();
+      // When the program has turned on mouse reporting (Claude Code does),
+      // xterm already sends it the right click, and Claude Code pastes on
+      // its own; pasting here too would paste twice. Shift+right-click
+      // bypasses mouse reporting, so it stays ours.
+      if (this.term.modes.mouseTrackingMode !== "none" && !e.shiftKey) return;
       if (this.term.hasSelection()) {
         void writeText(this.term.getSelection());
         this.term.clearSelection();

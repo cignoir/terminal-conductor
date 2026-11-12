@@ -64,7 +64,7 @@ Privacy and security:
 | Ctrl+1–9 | Go to the nth project |
 | Alt+↑ / Alt+↓ | Move between the Claude and shell panes |
 | Ctrl+C (with a selection) / Ctrl+Shift+C | Copy |
-| Ctrl+V / right-click | Paste (right-click with a selection copies) |
+| Ctrl+V / right-click | Paste (right-click with a selection copies). When the program in the pane reads the mouse, as Claude Code does, a right-click goes to it and it pastes on its own; Shift+right-click uses the app's paste and copy |
 | Shift+Enter | New line in Claude's prompt |
 | Ctrl+Shift+F | Search past AI conversations |
 | Ctrl+, | Settings |
