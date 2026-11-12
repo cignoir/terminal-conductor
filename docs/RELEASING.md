@@ -22,6 +22,7 @@ The draft step keeps "latest" from switching over before all files are in place:
 |---|---|
 | Check | `updater_check`. If there is a newer version, the Settings button gets a red dot and Settings shows the version and its notes. Failures and "up to date" stay quiet |
 | Download | `updater_download`. Only fetches the installer; installs nothing, restarts nothing. A failed download can be retried without checking again |
+| Install on close (default) | With "Install downloaded updates when the app closes" on, a downloaded update is installed when the app is closed normally, after the panes have been shut down. The app is **not** started again (`restart_after_install(false)`), so nothing is interrupted. Verified 2026-11-12 with separately named test builds (0.1.1 → 0.1.2): the update installed and the app stayed closed |
 | Restart and update | Only when the user presses it. The frontend saves its documents, the backend sends Ctrl+C twice to every pane so Claude exits cleanly, then runs the installer. When it finishes the app starts again and each Claude resumes its conversation with `--resume` |
 
 - Development builds (`tauri dev`) never check: comparing against the released version would offer to overwrite the installed app.

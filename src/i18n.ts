@@ -56,6 +56,12 @@ const en = {
   "project.info": "Info",
   "project.hideInfo": "Hide info",
   "project.newConversation": "New conversation",
+  "project.newConversationTip": "Restart Claude with a new conversation",
+  "project.summaryUpdateTip": "Regenerate the summary",
+  "project.summaryGenerateTip": "Generate a summary",
+  "pane.resumeTip": "Resume the previous conversation",
+  "pane.continueTip": "Continue this folder's latest conversation",
+  "pane.newClaudeTip": "Start Claude with a new conversation",
   "project.edit": "Edit",
   "project.confirmNewConversation":
     "Close the current conversation and start Claude with a new one?\nYou can reopen the previous one with claude --resume.",
@@ -164,6 +170,9 @@ const en = {
   "update.install": "Restart and update",
   "update.installTitle": "Lets each Claude exit cleanly, then updates and restarts",
   "update.readyHint": "On restart each pane's Claude exits cleanly and resumes the same conversation after the update.",
+  "update.readyOnExit":
+    "v{version} will be installed the next time you close the app, so nothing is interrupted. Or restart and update now.",
+  "update.installOnExit": "Install downloaded updates when the app closes (without restarting it)",
   "update.notes": "What's new",
 
   // Conversation search
@@ -251,6 +260,12 @@ const ja: Record<MessageKey, string> = {
   "project.info": "情報",
   "project.hideInfo": "情報を閉じる",
   "project.newConversation": "新しい会話",
+  "project.newConversationTip": "新しい会話で Claude を起動し直す",
+  "project.summaryUpdateTip": "要約を作り直す",
+  "project.summaryGenerateTip": "要約を作る",
+  "pane.resumeTip": "前回の会話を再開する",
+  "pane.continueTip": "このフォルダの直前の会話を続ける",
+  "pane.newClaudeTip": "新しい会話で Claude を起動する",
   "project.edit": "編集",
   "project.confirmNewConversation":
     "今の会話を閉じて、新しい会話で Claude を起動し直しますか？\n前の会話は claude --resume で開けます。",
@@ -351,6 +366,9 @@ const ja: Record<MessageKey, string> = {
   "update.install": "再起動して更新",
   "update.installTitle": "開いている Claude を正常に終了させてから、更新して再起動します",
   "update.readyHint": "再起動すると、各ペインの Claude は正常に終了し、更新後に同じ会話で再開します。",
+  "update.readyOnExit":
+    "v{version} は、次にアプリを閉じたときにインストールされます。作業は中断されません。今すぐ再起動して更新することもできます。",
+  "update.installOnExit": "ダウンロードした更新を、アプリを閉じるときにインストールする（起動し直さない）",
   "update.notes": "変更点",
 
   "history.title": "会話を検索",

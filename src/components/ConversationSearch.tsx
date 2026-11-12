@@ -9,6 +9,8 @@ import { folderName, useStore } from "../store";
 import { getTerminal } from "../terminal/cache";
 import { type Agent, type HistoryHit, type HistoryProgress, paneId } from "../types";
 import { relativeTime } from "../util";
+import { Copy, FolderOpen } from "lucide-react";
+import { IconButton } from "./IconButton";
 
 export const AGENT_LABEL: Record<Agent, string> = {
   claude: "Claude",
@@ -240,18 +242,21 @@ export function ConversationSearch() {
               <div className="history__path">{highlight(h.cwd, terms)}</div>
               {h.snippet && <div className="history__snippet">{highlight(h.snippet, terms)}</div>}
               <div className="history__tools" onClick={(e) => e.stopPropagation()}>
-                <button
-                  className="btn btn--ghost btn--small"
+                <IconButton
+                  icon={Copy}
+                  size={14}
+                  label={`${t("history.copyCommand")}: ${resumeCommand(h)}`}
                   onClick={() => {
                     void writeText(resumeCommand(h));
                     setMessage(t("history.copied", { command: resumeCommand(h) }));
                   }}
-                >
-                  {t("history.copyCommand")}
-                </button>
-                <button className="btn btn--ghost btn--small" onClick={() => void openPath(h.cwd)}>
-                  {t("project.openFolder")}
-                </button>
+                />
+                <IconButton
+                  icon={FolderOpen}
+                  size={14}
+                  label={t("project.openFolder")}
+                  onClick={() => void openPath(h.cwd)}
+                />
               </div>
             </li>
           ))}

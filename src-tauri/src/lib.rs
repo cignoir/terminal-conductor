@@ -454,6 +454,16 @@ fn on_hook(app: &AppHandle, sessions: &Arc<Mutex<SessionStore>>, msg: HookMessag
 
 static CLOSING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
+/// The "install downloaded updates when the app closes" setting (default on).
+fn install_update_on_exit(app: &AppHandle) -> bool {
+    let Some(state) = app.try_state::<AppState>() else {
+        return false;
+    };
+    load_json::<Value>(&file(&state, "settings.json"))
+        .and_then(|s| s.get("installUpdateOnExit").and_then(|v| v.as_bool()))
+        .unwrap_or(true)
+}
+
 /// Stops every pane cleanly and saves state. Used on exit and before an update.
 pub(crate) fn shutdown_app(app: &AppHandle) {
     if let Some(state) = app.try_state::<AppState>() {
@@ -544,6 +554,11 @@ pub fn run() {
                 let app = window.app_handle().clone();
                 std::thread::spawn(move || {
                     shutdown_app(&app);
+                    // A downloaded update is applied now unless the user
+                    // turned that off; the app does not start again.
+                    if install_update_on_exit(&app) {
+                        updater::install_on_exit(&app);
+                    }
                     app.exit(0);
                 });
             }

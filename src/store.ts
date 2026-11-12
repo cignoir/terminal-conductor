@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notifications: true,
   autoStartClaude: false,
   historySearch: false,
+  installUpdateOnExit: true,
   scrollback: 5000,
 };
 

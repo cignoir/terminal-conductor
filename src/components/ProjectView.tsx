@@ -7,6 +7,8 @@ import { TerminalPane, requestRestart } from "./TerminalPane";
 import { relativeTime } from "../util";
 import { confirmDialog } from "../confirm";
 import { useT } from "../i18n";
+import { FolderOpen, Info, MessageSquarePlus, Pencil, RefreshCw } from "lucide-react";
+import { IconButton } from "./IconButton";
 
 export function ProjectView({ project }: { project: Project }) {
   const t = useT();
@@ -108,7 +110,7 @@ function ProjectHeader({ project }: { project: Project }) {
         <h1 className="phead__name">{project.name}</h1>
         <StatusBadge status={status} />
         {git?.branch && (
-          <span className="chip" title={t("project.gitBranch")}>
+          <span className="chip" data-tip={t("project.gitBranch")}>
             {git.branch}
             {git.changed > 0 && <span className="chip__dirty">±{git.changed}</span>}
             {git.ahead > 0 && <span className="chip__meta">↑{git.ahead}</span>}
@@ -117,27 +119,25 @@ function ProjectHeader({ project }: { project: Project }) {
         )}
         <button
           className="phead__path"
-          title={t("project.openFolder")}
+          data-tip={t("project.openFolder")}
           onClick={() => void openPath(project.path)}
         >
           {project.path}
         </button>
         <div className="phead__actions">
-          <button className="btn btn--ghost btn--small" onClick={() => void openPath(project.path)}>
-            {t("menu.explorer")}
-          </button>
-          <button className="btn btn--ghost btn--small" onClick={() => setInfoOpen((v) => !v)}>
-            {infoOpen ? t("project.hideInfo") : t("project.info")}
-          </button>
-          <button className="btn btn--ghost btn--small" onClick={restartClaude}>
-            {t("project.newConversation")}
-          </button>
-          <button
-            className="btn btn--ghost btn--small"
+          <IconButton icon={FolderOpen} label={t("project.openFolder")} onClick={() => void openPath(project.path)} />
+          <IconButton
+            icon={Info}
+            label={infoOpen ? t("project.hideInfo") : t("project.info")}
+            active={infoOpen}
+            onClick={() => setInfoOpen((v) => !v)}
+          />
+          <IconButton icon={MessageSquarePlus} label={t("project.newConversationTip")} onClick={restartClaude} />
+          <IconButton
+            icon={Pencil}
+            label={t("project.edit")}
             onClick={() => set({ dialog: { kind: "edit", projectId: project.id } })}
-          >
-            {t("project.edit")}
-          </button>
+          />
         </div>
       </div>
       {(project.description || title) && (
@@ -151,20 +151,23 @@ function ProjectHeader({ project }: { project: Project }) {
           <section>
             <h2>
               {t("project.summary")}
-              <button
-                className="btn btn--ghost btn--small"
+              <IconButton
+                icon={RefreshCw}
+                size={14}
+                spin={summarizing}
                 disabled={summarizing}
+                label={
+                  summarizing
+                    ? t("project.summaryGenerating")
+                    : project.summary
+                      ? t("project.summaryUpdateTip")
+                      : t("project.summaryGenerateTip")
+                }
                 onClick={() => {
                   setSummaryError(null);
                   summarize(project.id).catch((e) => setSummaryError(String(e)));
                 }}
-              >
-                {summarizing
-                  ? t("project.summaryGenerating")
-                  : project.summary
-                    ? t("project.summaryUpdate")
-                    : t("project.summaryGenerate")}
-              </button>
+              />
             </h2>
             {summaryError && <p className="error">{summaryError}</p>}
             {project.summary ? (

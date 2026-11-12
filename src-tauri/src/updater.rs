@@ -87,6 +87,25 @@ pub async fn updater_download(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Installs a downloaded update while the app is closing, without starting
+/// the app again afterwards. Call after the panes have been shut down.
+/// Returns false if there is nothing to install; on success the process
+/// exits (Windows) and this does not return.
+pub fn install_on_exit(app: &AppHandle) -> bool {
+    let update = app.state::<PendingUpdate>().0.lock().unwrap().clone();
+    let bytes = app.state::<DownloadedUpdate>().0.lock().unwrap().take();
+    let (Some(update), Some(bytes)) = (update, bytes) else {
+        return false;
+    };
+    match update.restart_after_install(false).install(&bytes) {
+        Ok(()) => true,
+        Err(e) => {
+            eprintln!("installing the update on exit failed: {e}");
+            false
+        }
+    }
+}
+
 /// Stops every pane cleanly, then runs the downloaded installer. On Windows
 /// the installer replaces the app and the process exits, so this does not
 /// return on success. The frontend saves its documents before calling this.

@@ -1148,3 +1148,81 @@ mark {
 .menu__item--danger {
   color: var(--st-error);
 }
+
+/* ---------- icon buttons and tooltips ---------- */
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--text-2);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.icon-btn--primary {
+  color: #fff;
+  background: #2f5ea8;
+}
+
+.icon-btn--primary:hover {
+  background: #3769b8;
+  color: #fff;
+}
+
+.icon-btn--danger {
+  color: var(--st-error);
+}
+
+.icon-btn--active {
+  background: var(--line);
+  color: var(--text);
+}
+
+.row__tools .icon-btn,
+.history__tools .icon-btn,
+.phead__info .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+
+.sidebar__bottom {
+  gap: 2px;
+}
+
+.phead__actions {
+  gap: 2px;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 360px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: #e8eaee;
+  color: #15181d;
+  font-size: 11.5px;
+  line-height: 1.4;
+  white-space: pre;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}

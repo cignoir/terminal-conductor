@@ -8,6 +8,8 @@ import { useT } from "../i18n";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { openContextMenu } from "./ContextMenu";
 import { updateNeedsAttention, useUpdater } from "../updater";
+import { ChevronDown, ChevronUp, FolderInput, Plus, Settings, TextSearch, X } from "lucide-react";
+import { IconButton } from "./IconButton";
 
 export function Sidebar() {
   const t = useT();
@@ -37,19 +39,14 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar__top">
         <span className="brand">Terminal Conductor</span>
-        <button
-          className="icon-btn icon-btn--badge"
+        <IconButton
+          icon={Settings}
+          label={updateBadge ? t("sidebar.settingsUpdate") : t("sidebar.settings")}
+          shortcut="Ctrl+,"
+          className="icon-btn--badge"
           data-badge={updateBadge ? "" : undefined}
-          title={updateBadge ? t("sidebar.settingsUpdate") : t("sidebar.settings")}
           onClick={() => set({ dialog: { kind: "settings" } })}
-        >
-          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
-            <path
-              fill="currentColor"
-              d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm0 1.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6ZM6.9 1h2.2l.4 1.8c.4.1.8.3 1.1.5l1.6-1 1.5 1.5-1 1.6c.2.3.4.7.5 1.1l1.8.4v2.2l-1.8.4c-.1.4-.3.8-.5 1.1l1 1.6-1.5 1.5-1.6-1c-.3.2-.7.4-1.1.5L9.1 15H6.9l-.4-1.8c-.4-.1-.8-.3-1.1-.5l-1.6 1-1.5-1.5 1-1.6c-.2-.3-.4-.7-.5-1.1L1 9.1V6.9l1.8-.4c.1-.4.3-.8.5-1.1l-1-1.6 1.5-1.5 1.6 1c.3-.2.7-.4 1.1-.5L6.9 1Z"
-            />
-          </svg>
-        </button>
+        />
       </div>
       <div className="sidebar__search">
         <input
@@ -75,19 +72,18 @@ export function Sidebar() {
         )}
       </div>
       <div className="sidebar__bottom">
-        <button className="btn btn--small" onClick={() => set({ dialog: { kind: "add" } })}>
-          {t("sidebar.add")}
-        </button>
-        <button className="btn btn--small btn--ghost" onClick={() => set({ dialog: { kind: "import" } })}>
-          {t("sidebar.import")}
-        </button>
-        <button
-          className="btn btn--small btn--ghost"
-          title="Ctrl+Shift+F"
+        <IconButton icon={Plus} label={t("dialog.addTitle")} onClick={() => set({ dialog: { kind: "add" } })} />
+        <IconButton
+          icon={FolderInput}
+          label={t("sidebar.import")}
+          onClick={() => set({ dialog: { kind: "import" } })}
+        />
+        <IconButton
+          icon={TextSearch}
+          label={t("history.title")}
+          shortcut="Ctrl+Shift+F"
           onClick={() => set({ dialog: { kind: "history" } })}
-        >
-          {t("sidebar.history")}
-        </button>
+        />
       </div>
     </aside>
   );
@@ -150,19 +146,9 @@ function ProjectRow({
       </div>
       {open && (
         <div className="row__tools" onClick={(e) => e.stopPropagation()}>
-          <button className="icon-btn" title={t("sidebar.moveUp")} onClick={() => moveOpen(project.id, -1)}>
-            ↑
-          </button>
-          <button className="icon-btn" title={t("sidebar.moveDown")} onClick={() => moveOpen(project.id, 1)}>
-            ↓
-          </button>
-          <button
-            className="icon-btn"
-            title={t("sidebar.close")}
-            onClick={() => void confirmClose()}
-          >
-            ×
-          </button>
+          <IconButton icon={ChevronUp} size={14} label={t("sidebar.moveUp")} onClick={() => moveOpen(project.id, -1)} />
+          <IconButton icon={ChevronDown} size={14} label={t("sidebar.moveDown")} onClick={() => moveOpen(project.id, 1)} />
+          <IconButton icon={X} size={14} label={t("sidebar.close")} onClick={() => void confirmClose()} />
         </div>
       )}
     </div>

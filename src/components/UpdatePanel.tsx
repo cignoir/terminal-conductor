@@ -1,5 +1,5 @@
 import { useT } from "../i18n";
-import { flushDocuments } from "../store";
+import { flushDocuments, useStore } from "../store";
 import { useUpdater } from "../updater";
 
 /** Update section of the settings dialog. */
@@ -11,6 +11,8 @@ export function UpdatePanel() {
   const download = useUpdater((s) => s.download);
   const install = useUpdater((s) => s.install);
   const version = phase.version ?? "";
+  const onExit = useStore((s) => s.settings.installUpdateOnExit);
+  const setSettings = useStore((s) => s.setSettings);
 
   const status = (() => {
     switch (phase.status) {
@@ -76,7 +78,19 @@ export function UpdatePanel() {
           <div style={{ width: `${phase.percent ?? 0}%` }} />
         </div>
       )}
-      {phase.status === "ready" && <p className="field__hint">{t("update.readyHint")}</p>}
+      {phase.status === "ready" && (
+        <p className="field__hint">
+          {onExit ? t("update.readyOnExit", { version }) : t("update.readyHint")}
+        </p>
+      )}
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={onExit}
+          onChange={(e) => setSettings({ installUpdateOnExit: e.target.checked })}
+        />
+        {t("update.installOnExit")}
+      </label>
       {phase.error && <p className="error">{phase.error}</p>}
       {showNotes && (
         <details className="update__notes">

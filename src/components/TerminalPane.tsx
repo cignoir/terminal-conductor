@@ -3,6 +3,8 @@ import { api } from "../api";
 import { useStore } from "../store";
 import { getTerminal } from "../terminal/cache";
 import { useT } from "../i18n";
+import { History, MessageSquarePlus, Play, RotateCcw, X } from "lucide-react";
+import { IconButton } from "./IconButton";
 import {
   type LaunchMode,
   type PaneRole,
@@ -161,30 +163,26 @@ export function TerminalPane({ project, role, focused, onFocus }: Props) {
       {showOffer && (
         <div className="pane__bar pane__bar--offer">
           <span>{offer.sessionId ? t("pane.resumeFound") : t("pane.continueFound")}</span>
-          <button
-            className="btn btn--small btn--primary"
+          <IconButton
+            icon={offer.sessionId ? Play : History}
+            variant="primary"
+            label={offer.sessionId ? t("pane.resumeTip") : t("pane.continueTip")}
             onClick={() => startClaude(offer.sessionId ? "resume" : "continue")}
-          >
-            {offer.sessionId ? t("pane.resume") : t("pane.continue")}
-          </button>
-          <button className="btn btn--small btn--ghost" onClick={() => startClaude("new")}>
-            {t("pane.newClaude")}
-          </button>
-          <button className="icon-btn" title={t("pane.dismiss")} onClick={() => setOffer(null)}>
-            ×
-          </button>
+          />
+          <IconButton icon={MessageSquarePlus} label={t("pane.newClaudeTip")} onClick={() => startClaude("new")} />
+          <IconButton icon={X} label={t("pane.dismiss")} onClick={() => setOffer(null)} />
         </div>
       )}
       {(alive === false || error) && (
         <div className="pane__bar">
           <span>{error ?? t("pane.exited")}</span>
-          <button className="btn btn--small" onClick={() => void start()}>
-            {t("pane.restart")}
-          </button>
+          <IconButton icon={RotateCcw} variant="primary" label={t("pane.restart")} onClick={() => void start()} />
           {role === "claude" && (
-            <button className="btn btn--small btn--ghost" onClick={() => requestRestart(id, true)}>
-              {t("pane.restartFresh")}
-            </button>
+            <IconButton
+              icon={MessageSquarePlus}
+              label={t("pane.restartFresh")}
+              onClick={() => requestRestart(id, true)}
+            />
           )}
         </div>
       )}

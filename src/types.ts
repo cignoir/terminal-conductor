@@ -40,6 +40,8 @@ export type Settings = {
   autoStartClaude: boolean;
   /** Conversation search across AI CLIs; off until the user agrees to indexing. */
   historySearch: boolean;
+  /** Install a downloaded update when the app is closed normally. */
+  installUpdateOnExit: boolean;
   scrollback: number;
 };
 

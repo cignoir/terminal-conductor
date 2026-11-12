@@ -15,6 +15,7 @@ import { launchModeFor } from "./components/TerminalPane";
 import { QuickSwitcher } from "./components/QuickSwitcher";
 import { ConversationSearch } from "./components/ConversationSearch";
 import { ContextMenu } from "./components/ContextMenu";
+import { Tooltip } from "./components/Tooltip";
 import { Sidebar } from "./components/Sidebar";
 import { setNotifier, useStore } from "./store";
 import { startUpdater } from "./updater";
@@ -241,6 +242,7 @@ export default function App() {
       {dialog?.kind === "history" && <ConversationSearch />}
       <Notice />
       <ContextMenu />
+      <Tooltip />
     </div>
   );
 }

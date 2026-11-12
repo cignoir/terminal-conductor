@@ -15,7 +15,7 @@ A Windows terminal app for people who run [Claude Code](https://code.claude.com/
 - **Bring your current conversations along**: a new project offers to continue the folder's latest Claude Code conversation with `claude --continue` (exit Claude in your other terminal first).
 - **Find where a conversation happened**: Ctrl+Shift+F searches your past conversations with Claude Code, Codex CLI and Antigravity CLI (`agy`) by words, file names, errors or folder, then opens that folder and resumes the conversation. Off until you turn it on; see [Conversation search](#conversation-search).
 - **English and Japanese UI**: follows the Windows display language by default; switch in Settings.
-- **Automatic updates** from GitHub Releases, applied from the Settings dialog.
+- **Automatic updates** from GitHub Releases. Download from Settings; the update is installed the next time you close the app (or restart and update right away).
 
 ## Install
 
@@ -69,6 +69,8 @@ Privacy and security:
 | Ctrl+Shift+F | Search past AI conversations |
 | Ctrl+, | Settings |
 | Right-click a project | Open in Explorer, open, edit, close |
+
+Toolbar buttons are icons; hover or focus one to see what it does and its shortcut.
 
 ## Data
 
