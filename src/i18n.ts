@@ -118,7 +118,8 @@ const en = {
 
   // Import dialog
   "import.title": "Import from folder",
-  "import.help": "Looks in the chosen folder for subfolders that contain .git, package.json, Cargo.toml, CLAUDE.md or similar.",
+  "import.help":
+    "If the chosen folder is a project (it has .git, package.json, Cargo.toml, CLAUDE.md or similar), only that folder is added. Otherwise its subfolders that are projects are listed.",
   "import.parent": "Parent folder",
   "import.searching": "Searching…",
   "import.none": "Nothing found",
@@ -307,7 +308,8 @@ const ja: Record<MessageKey, string> = {
   "shell.powershell": "Windows PowerShell (powershell.exe)",
 
   "import.title": "フォルダから取り込む",
-  "import.help": "選んだフォルダの直下から、.git・package.json・Cargo.toml・CLAUDE.md などがあるフォルダを探します。",
+  "import.help":
+    "選んだフォルダ自体がプロジェクト（.git・package.json・Cargo.toml・CLAUDE.md などがある）なら、そのフォルダだけを追加します。そうでなければ、直下にあるプロジェクトのフォルダを一覧にします。",
   "import.parent": "親フォルダ",
   "import.searching": "探しています…",
   "import.none": "見つかりませんでした",

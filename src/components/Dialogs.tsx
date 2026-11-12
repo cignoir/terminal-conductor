@@ -86,13 +86,17 @@ export function ProjectDialog({ projectId }: { projectId?: string }) {
   };
 
   const save = async () => {
-    if (!draft.path || !(await api.pathExists(draft.path))) {
+    // Pasted paths often carry spaces (incl. full-width) or the quotes that
+    // Explorer's "Copy as path" adds.
+    const path = (draft.path ?? "").trim().replace(/^"(.*)"$/, "$1").trim();
+    if (!path || !(await api.pathExists(path))) {
       setError(t("dialog.folderNotFound"));
       return;
     }
     const value: Partial<Project> = {
       ...draft,
-      name: (draft.name || folderName(draft.path)).trim(),
+      path,
+      name: (draft.name || folderName(path)).trim(),
       tags: tags.split(/[,、]/).map((t) => t.trim()).filter(Boolean),
     };
     if (existing) {
