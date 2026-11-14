@@ -876,7 +876,9 @@ mod tests {
         let cwd = dir.to_string_lossy().to_string();
 
         let r = resolve("sub dir/画像 1.png", &cwd).expect("relative path resolves");
-        assert_eq!(r.path, png);
+        // Paths come back canonical (long names, e.g. RUNNER~1 expanded).
+        let expected = local_display_path(&std::fs::canonicalize(&png).unwrap()).unwrap();
+        assert_eq!(r.path, expected);
         assert!(resolve("fake.png", &cwd).is_none(), "content must be an image");
         assert!(resolve("missing.png", &cwd).is_none());
 
