@@ -290,16 +290,22 @@ fn claude_config_dir() -> Option<PathBuf> {
 
 /// True if a transcript for this session exists, i.e. `--resume` will work.
 pub fn transcript_exists(session_id: &str) -> bool {
-    let Some(dir) = claude_config_dir() else {
-        return false;
-    };
-    let Ok(entries) = std::fs::read_dir(dir.join("projects")) else {
-        return false;
-    };
+    find_transcript(session_id).is_some()
+}
+
+/// The transcript file of a Claude Code session, looked up by id under the
+/// Claude config folder's `projects` directory (never a path from outside).
+pub fn find_transcript(session_id: &str) -> Option<PathBuf> {
+    if !crate::history::is_safe_id(session_id) {
+        return None;
+    }
+    let dir = claude_config_dir()?;
     let file = format!("{session_id}.jsonl");
-    entries
+    std::fs::read_dir(dir.join("projects"))
+        .ok()?
         .flatten()
-        .any(|e| e.path().join(&file).is_file())
+        .map(|e| e.path().join(&file))
+        .find(|p| p.is_file())
 }
 
 #[cfg(test)]

@@ -12,6 +12,7 @@ use tc_core::launch::{
     transcript_exists,
 };
 use tc_core::history::{Agent, HistoryIndex, Hit, Progress, Sources, is_safe_id};
+use tc_core::images::{ImageItem, ImageRegistry};
 use tc_core::pty::{PaneEvents, PtyManager};
 use tc_core::status::{HookMessage, StatusUpdate, interpret};
 use tc_core::store::{SessionInfo, SessionStore, load_json, now_ms, save_json};
@@ -27,6 +28,74 @@ struct AppState {
     /// app data folder and is opened only once the user turns search on.
     history_path: PathBuf,
     history: Mutex<Option<Arc<HistoryIndex>>>,
+    /// Images Claude mentioned, per top pane (see tc_core::images).
+    images: Arc<Mutex<ImageRegistry>>,
+    image_scans: ImageScans,
+}
+
+/// Queues transcript scans for the image panel onto one worker thread.
+#[derive(Clone)]
+struct ImageScans(std::sync::mpsc::Sender<(String, String)>);
+
+impl ImageScans {
+    fn start(app: AppHandle, images: Arc<Mutex<ImageRegistry>>) -> Self {
+        let (tx, rx) = std::sync::mpsc::channel::<(String, String)>();
+        let _ = std::thread::Builder::new()
+            .name("image-scan".into())
+            .spawn(move || {
+                while let Ok(first) = rx.recv() {
+                    // Hooks come in bursts; scan each pane once per burst.
+                    let mut batch = vec![first];
+                    while let Ok(more) = rx.try_recv() {
+                        if !batch.contains(&more) {
+                            batch.push(more);
+                        }
+                    }
+                    for (pane_id, session_id) in batch {
+                        let Some(mut job) = images.lock().begin_scan(&pane_id, &session_id) else {
+                            continue;
+                        };
+                        let found = job.run();
+                        if let Some(items) = images.lock().finish_scan(job, found) {
+                            let _ = app.emit("images-changed", ImagesChanged { pane_id, items });
+                        }
+                    }
+                }
+            });
+        Self(tx)
+    }
+
+    /// Only the top pane is watched: the panel shows what the AI there wrote.
+    fn request(&self, pane_id: &str, session_id: &str) {
+        if pane_id.ends_with(":claude") {
+            let _ = self.0.send((pane_id.to_string(), session_id.to_string()));
+        }
+    }
+
+    /// Scans now and again shortly after: the Stop hook can arrive before
+    /// Claude Code has appended its final reply to the transcript.
+    fn request_settled(&self, pane_id: &str, session_id: &str) {
+        self.request(pane_id, session_id);
+        if !pane_id.ends_with(":claude") {
+            return;
+        }
+        let (tx, pane, session) = (self.0.clone(), pane_id.to_string(), session_id.to_string());
+        let _ = std::thread::Builder::new().name("image-rescan".into()).spawn(move || {
+            for delay in [800, 3000] {
+                std::thread::sleep(std::time::Duration::from_millis(delay));
+                if tx.send((pane.clone(), session.clone())).is_err() {
+                    return;
+                }
+            }
+        });
+    }
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImagesChanged {
+    pane_id: String,
+    items: Vec<ImageItem>,
 }
 
 struct EventBridge(AppHandle);
@@ -289,6 +358,7 @@ async fn pane_kill(app: AppHandle, pane_id: String) {
 #[tauri::command]
 fn pane_forget(state: State<'_, AppState>, pane_id: String) {
     state.pty.forget(&pane_id);
+    state.images.lock().clear(&pane_id);
     let mut s = state.sessions.lock();
     if s.map.remove(&pane_id).is_some() {
         s.save();
@@ -419,13 +489,132 @@ fn conversation_resume(
     state.pty.write(&pane_id, agent.resume_line(&id).as_bytes())
 }
 
+/// The images found for a pane. After a restart, the first call reads the
+/// pane's saved session in the background (results arrive as an event).
+#[tauri::command]
+fn images_list(state: State<'_, AppState>, pane_id: String) -> Vec<ImageItem> {
+    let images = state.images.lock();
+    if !images.has_session(&pane_id)
+        && let Some(id) = state.sessions.lock().map.get(&pane_id).and_then(|e| e.session_id.clone())
+    {
+        state.image_scans.request(&pane_id, &id);
+    }
+    images.items(&pane_id)
+}
+
+#[tauri::command]
+fn images_remove(state: State<'_, AppState>, pane_id: String, id: String) -> Vec<ImageItem> {
+    state.images.lock().remove(&pane_id, &id)
+}
+
+#[tauri::command]
+fn images_clear(state: State<'_, AppState>, pane_id: String) {
+    state.images.lock().clear(&pane_id);
+}
+
+/// Copies a listed image to the clipboard as pixels.
+#[tauri::command]
+async fn image_copy(app: AppHandle, id: String) -> Result<(), String> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    let path = app
+        .state::<AppState>()
+        .images
+        .lock()
+        .file(&id)
+        .ok_or("Unknown image")?;
+    let (rgba, w, h) = tauri::async_runtime::spawn_blocking(move || tc_core::images::decode_rgba(&path))
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("The image could not be read")?;
+    app.clipboard()
+        .write_image(&tauri::image::Image::new_owned(rgba, w, h))
+        .map_err(|e| e.to_string())
+}
+
+/// Serves `tcimg://localhost/<id>/thumb|full` (http://tcimg.localhost/ in
+/// the webview). Only ids handed out by the registry resolve to a file.
+/// Videos are served in ranges so the player can seek without the app
+/// reading the whole file.
+fn serve_image(app: &AppHandle, uri_path: &str, range: Option<&str>) -> tauri::http::Response<Vec<u8>> {
+    use tauri::http::{Response, StatusCode, header};
+    let not_found = || {
+        Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Vec::new())
+            .unwrap_or_default()
+    };
+    let mut parts = uri_path.trim_start_matches('/').split('/');
+    let (Some(id), Some(kind)) = (parts.next(), parts.next()) else {
+        return not_found();
+    };
+    let Some(state) = app.try_state::<AppState>() else {
+        return not_found();
+    };
+    let Some(path) = state.images.lock().file(id) else {
+        return not_found();
+    };
+    if kind == "full"
+        && let Some(v) = tc_core::images::read_video_range(&path, range)
+    {
+        let end = v.start + v.data.len() as u64 - 1;
+        let mut res = Response::builder()
+            .header(header::CONTENT_TYPE, v.mime)
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header("X-Content-Type-Options", "nosniff")
+            .header(header::CACHE_CONTROL, "no-cache");
+        if v.partial {
+            res = res
+                .status(StatusCode::PARTIAL_CONTENT)
+                .header(header::CONTENT_RANGE, format!("bytes {}-{end}/{}", v.start, v.total));
+        }
+        return res.body(v.data).unwrap_or_default();
+    }
+    let Some((data, mime, modified)) = tc_core::images::read_image(&path) else {
+        return not_found();
+    };
+    let (body, mime) = match kind {
+        "full" => (data, mime),
+        "thumb" => {
+            let cached = state.images.lock().cached_thumb(id, modified);
+            match cached {
+                Some(hit) => hit,
+                None => {
+                    let (t, m) = tc_core::images::thumbnail(data, mime);
+                    state.images.lock().store_thumb(id, modified, t.clone(), m);
+                    (t, m)
+                }
+            }
+        }
+        _ => return not_found(),
+    };
+    Response::builder()
+        .header(header::CONTENT_TYPE, mime)
+        .header("X-Content-Type-Options", "nosniff")
+        .header(header::CACHE_CONTROL, "no-cache")
+        .body(body)
+        .unwrap_or_default()
+}
+
 #[tauri::command]
 fn path_exists(path: String) -> bool {
     std::path::Path::new(&path).is_dir()
 }
 
-fn on_hook(app: &AppHandle, sessions: &Arc<Mutex<SessionStore>>, msg: HookMessage) {
+fn on_hook(
+    app: &AppHandle,
+    sessions: &Arc<Mutex<SessionStore>>,
+    scans: &ImageScans,
+    msg: HookMessage,
+) {
     let update: StatusUpdate = interpret(&msg);
+    // Subagent hooks carry no session id (see interpret).
+    if let Some(id) = &update.session_id {
+        match update.event.as_str() {
+            "SessionStart" | "PostToolUse" => scans.request(&update.pane_id, id),
+            "Stop" => scans.request_settled(&update.pane_id, id),
+            _ => {}
+        }
+    }
     {
         let mut store = sessions.lock();
         let entry = store.map.entry(update.pane_id.clone()).or_default();
@@ -517,6 +706,17 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .register_asynchronous_uri_scheme_protocol("tcimg", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            let path = request.uri().path().to_string();
+            let range = request
+                .headers()
+                .get(tauri::http::header::RANGE)
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string);
+            // Reading and thumbnailing must stay off the main thread.
+            std::thread::spawn(move || responder.respond(serve_image(&app, &path, range.as_deref())));
+        })
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -529,10 +729,13 @@ pub fn run() {
                 data_dir.join("sessions.json"),
             )));
             let handle = app.handle().clone();
+            let images = Arc::new(Mutex::new(ImageRegistry::default()));
+            let image_scans = ImageScans::start(handle.clone(), images.clone());
             {
                 let sessions = sessions.clone();
                 let handle = handle.clone();
-                tc_core::hook::start_server(move |msg| on_hook(&handle, &sessions, msg));
+                let scans = image_scans.clone();
+                tc_core::hook::start_server(move |msg| on_hook(&handle, &sessions, &scans, msg));
             }
             let history_path = app.path().app_local_data_dir()?.join("history.db");
             app.manage(AppState {
@@ -542,6 +745,8 @@ pub fn run() {
                 data_dir,
                 history_path,
                 history: Mutex::new(None),
+                images,
+                image_scans,
             });
             Ok(())
         })
@@ -594,6 +799,10 @@ pub fn run() {
             scan_projects,
             generate_summary,
             path_exists,
+            images_list,
+            images_remove,
+            images_clear,
+            image_copy,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,8 +7,9 @@ import { TerminalPane, requestRestart } from "./TerminalPane";
 import { relativeTime } from "../util";
 import { confirmDialog } from "../confirm";
 import { useT } from "../i18n";
-import { FolderOpen, Info, MessageSquarePlus, Pencil, RefreshCw } from "lucide-react";
+import { FolderOpen, Images, Info, MessageSquarePlus, Pencil, RefreshCw } from "lucide-react";
 import { IconButton } from "./IconButton";
+import { ImagePanel } from "./ImagePanel";
 
 export function ProjectView({ project }: { project: Project }) {
   const t = useT();
@@ -41,34 +42,37 @@ export function ProjectView({ project }: { project: Project }) {
   return (
     <div className="project">
       <ProjectHeader project={project} />
-      <div
-        className={`split ${dragging ? "split--dragging" : ""}`}
-        ref={containerRef}
-        style={{
-          gridTemplateRows: `${project.splitRatio}fr 6px ${1 - project.splitRatio}fr`,
-        }}
-      >
-        <TerminalPane
-          project={project}
-          role="claude"
-          focused={focusedRole === "claude"}
-          onFocus={() => setFocusedRole(project.id, "claude")}
-        />
+      <div className="project__body">
         <div
-          className="split__handle"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            setDragging(true);
+          className={`split ${dragging ? "split--dragging" : ""}`}
+          ref={containerRef}
+          style={{
+            gridTemplateRows: `${project.splitRatio}fr 6px ${1 - project.splitRatio}fr`,
           }}
-          onDoubleClick={() => updateProject(project.id, { splitRatio: 0.72 })}
-          title={t("project.resizeHandle")}
-        />
-        <TerminalPane
-          project={project}
-          role="shell"
-          focused={focusedRole === "shell"}
-          onFocus={() => setFocusedRole(project.id, "shell")}
-        />
+        >
+          <TerminalPane
+            project={project}
+            role="claude"
+            focused={focusedRole === "claude"}
+            onFocus={() => setFocusedRole(project.id, "claude")}
+          />
+          <div
+            className="split__handle"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDoubleClick={() => updateProject(project.id, { splitRatio: 0.72 })}
+            title={t("project.resizeHandle")}
+          />
+          <TerminalPane
+            project={project}
+            role="shell"
+            focused={focusedRole === "shell"}
+            onFocus={() => setFocusedRole(project.id, "shell")}
+          />
+        </div>
+        {project.imagesOpen && <ImagePanel project={project} />}
       </div>
     </div>
   );
@@ -84,6 +88,8 @@ function ProjectHeader({ project }: { project: Project }) {
   const refreshGit = useStore((s) => s.refreshGit);
   const summarize = useStore((s) => s.summarize);
   const set = useStore((s) => s.set);
+  const toggleImages = useStore((s) => s.toggleImages);
+  const unseenImages = useStore((s) => s.unseenImages[project.id] ?? 0);
   const [infoOpen, setInfoOpen] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
@@ -133,6 +139,21 @@ function ProjectHeader({ project }: { project: Project }) {
             onClick={() => setInfoOpen((v) => !v)}
           />
           <IconButton icon={MessageSquarePlus} label={t("project.newConversationTip")} onClick={restartClaude} />
+          <IconButton
+            icon={Images}
+            label={
+              unseenImages > 0
+                ? t("images.toggleNew", { n: unseenImages })
+                : project.imagesOpen
+                  ? t("images.hide")
+                  : t("images.show")
+            }
+            shortcut="Ctrl+Shift+I"
+            active={!!project.imagesOpen}
+            className={unseenImages > 0 ? "icon-btn--count" : undefined}
+            data-count={unseenImages > 0 ? (unseenImages > 99 ? "99+" : String(unseenImages)) : undefined}
+            onClick={() => toggleImages(project.id)}
+          />
           <IconButton
             icon={Pencil}
             label={t("project.edit")}

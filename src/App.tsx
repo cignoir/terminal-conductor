@@ -15,6 +15,7 @@ import { launchModeFor } from "./components/TerminalPane";
 import { QuickSwitcher } from "./components/QuickSwitcher";
 import { ConversationSearch } from "./components/ConversationSearch";
 import { ContextMenu } from "./components/ContextMenu";
+import { Lightbox } from "./components/Lightbox";
 import { Tooltip } from "./components/Tooltip";
 import { Sidebar } from "./components/Sidebar";
 import { setNotifier, useStore } from "./store";
@@ -22,7 +23,7 @@ import { startUpdater } from "./updater";
 import { parseOsc7501 } from "./terminal/osc7501";
 import { resolveLang, useT } from "./i18n";
 import { focusTerminal } from "./terminal/cache";
-import { type StatusUpdate, paneId } from "./types";
+import { type ImageItem, type StatusUpdate, paneId } from "./types";
 
 async function setupNotifications() {
   let granted = await isPermissionGranted().catch(() => false);
@@ -110,6 +111,11 @@ export default function App() {
         if (status) useStore.getState().applyProgramStatus(e.payload.paneId, status);
       }),
     );
+    unsubs.push(
+      listen<{ paneId: string; items: ImageItem[] }>("images-changed", (e) =>
+        useStore.getState().setImages(e.payload.paneId, e.payload.items),
+      ),
+    );
     void useStore
       .getState()
       .init()
@@ -139,6 +145,9 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState();
+      // The image viewer covers everything and handles its own keys; app
+      // shortcuts would open dialogs or switch projects hidden behind it.
+      if (s.lightbox) return;
       if (e.ctrlKey && !e.altKey && e.key === "Tab") {
         e.preventDefault();
         s.cycle(e.shiftKey ? -1 : 1);
@@ -162,6 +171,12 @@ export default function App() {
       } else if (e.ctrlKey && e.shiftKey && (e.key === "F" || e.key === "f")) {
         e.preventDefault();
         s.set({ dialog: { kind: "history" }, switcherOpen: false });
+      } else if (e.ctrlKey && e.shiftKey && !e.altKey && (e.key === "I" || e.key === "i")) {
+        // Also keeps the webview's developer tools shortcut away in dev builds.
+        e.preventDefault();
+        e.stopPropagation();
+        const id = s.workspace.activeProjectId;
+        if (id) s.toggleImages(id);
       } else if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
         s.set({ dialog: { kind: "settings" } });
@@ -228,6 +243,8 @@ export default function App() {
               <dd>{t("keys.panes")}</dd>
               <dt>Ctrl+Shift+F</dt>
               <dd>{t("keys.history")}</dd>
+              <dt>Ctrl+Shift+I</dt>
+              <dd>{t("keys.images")}</dd>
               <dt>Shift+Enter</dt>
               <dd>{t("keys.newline")}</dd>
             </dl>
@@ -241,6 +258,7 @@ export default function App() {
       {dialog?.kind === "settings" && <SettingsDialog />}
       {dialog?.kind === "history" && <ConversationSearch />}
       <Notice />
+      <Lightbox />
       <ContextMenu />
       <Tooltip />
     </div>

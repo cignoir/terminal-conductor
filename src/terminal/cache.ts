@@ -6,7 +6,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { Terminal, type ITheme } from "@xterm/xterm";
+import { type ITheme, Terminal } from "@xterm/xterm";
 import { api } from "../api";
 import { useStore } from "../store";
 import type { Settings } from "../types";
@@ -47,6 +47,7 @@ export function isAppShortcut(e: KeyboardEvent): boolean {
     return true;
   if (e.ctrlKey && e.key === ",") return true;
   if (e.ctrlKey && e.shiftKey && (e.key === "F" || e.key === "f")) return true;
+  if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) return true;
   return false;
 }
 
@@ -294,6 +295,73 @@ export function focusTerminal(paneId: string) {
 
 export function clearTerminal(paneId: string) {
   entries.get(paneId)?.term.clear();
+}
+
+/** Most marks one highlight draws. */
+const MAX_HIGHLIGHTS = 50;
+
+/**
+ * Outlines every place `needle` (case-insensitive) appears in the visible
+ * part of the pane, following redraws and scrolling until the returned
+ * function is called. Drawn as an overlay rather than with xterm
+ * decorations, which are hidden on the alternate screen that Claude Code
+ * uses. Matches split across lines are not found.
+ */
+export function highlightInTerminal(paneId: string, needle: string): () => void {
+  const term = entries.get(paneId)?.term;
+  const screen = term?.element?.querySelector<HTMLElement>(".xterm-screen");
+  if (!term || !screen || !needle) return () => {};
+  const layer = document.createElement("div");
+  layer.className = "term-hl-layer";
+  screen.appendChild(layer);
+  const want = needle.toLowerCase();
+
+  const draw = () => {
+    const buf = term.buffer.active;
+    const cw = screen.clientWidth / term.cols;
+    const ch = screen.clientHeight / term.rows;
+    const boxes: HTMLElement[] = [];
+    for (let row = 0; row < term.rows && boxes.length < MAX_HIGHLIGHTS; row++) {
+      const line = buf.getLine(buf.viewportY + row);
+      if (!line || !line.translateToString(true).toLowerCase().includes(want)) continue;
+      // Map string positions to cell columns (wide characters take two cells).
+      let text = "";
+      const cols: number[] = [];
+      const widths: number[] = [];
+      for (let x = 0; x < line.length; x++) {
+        const cell = line.getCell(x);
+        if (!cell) break;
+        const w = cell.getWidth();
+        if (w === 0) continue;
+        const chars = cell.getChars() || " ";
+        for (let k = 0; k < chars.length; k++) {
+          cols.push(x);
+          widths.push(w);
+        }
+        text += chars;
+      }
+      const lower = text.toLowerCase();
+      for (let i = lower.indexOf(want); i >= 0; i = lower.indexOf(want, i + want.length)) {
+        const last = i + want.length - 1;
+        if (last >= cols.length || boxes.length >= MAX_HIGHLIGHTS) break;
+        const box = document.createElement("div");
+        box.className = "term-hl";
+        box.style.left = `${cols[i] * cw}px`;
+        box.style.top = `${row * ch}px`;
+        box.style.width = `${(cols[last] + widths[last] - cols[i]) * cw}px`;
+        box.style.height = `${ch}px`;
+        boxes.push(box);
+      }
+    }
+    layer.replaceChildren(...boxes);
+  };
+
+  draw();
+  const subs = [term.onRender(draw), term.onScroll(draw), term.onResize(draw)];
+  return () => {
+    subs.forEach((d) => d.dispose());
+    layer.remove();
+  };
 }
 
 export type { TermEntry };

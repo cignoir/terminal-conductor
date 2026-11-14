@@ -4,6 +4,7 @@ import type {
   GitInfo,
   HistoryHit,
   HistoryProgress,
+  ImageItem,
   LaunchMode,
   ResumeInfo,
   SessionInfo,
@@ -60,4 +61,14 @@ export const api = {
   conversationResume: (paneId: string, agent: Agent, id: string, typeLine = true) =>
     invoke<void>("conversation_resume", { paneId, agent, id, typeLine }),
   pathExists: (path: string) => invoke<boolean>("path_exists", { path }),
+  imagesList: (paneId: string) => invoke<ImageItem[]>("images_list", { paneId }),
+  imagesRemove: (paneId: string, id: string) =>
+    invoke<ImageItem[]>("images_remove", { paneId, id }),
+  imagesClear: (paneId: string) => invoke<void>("images_clear", { paneId }),
+  imageCopy: (id: string) => invoke<void>("image_copy", { id }),
 };
+
+/** Where the app's image protocol (tcimg) serves a listed image. */
+export function imageUrl(item: ImageItem, kind: "thumb" | "full") {
+  return `http://tcimg.localhost/${item.id}/${kind}?v=${item.modified}`;
+}

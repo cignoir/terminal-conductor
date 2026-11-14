@@ -3,6 +3,7 @@
 
 pub mod history;
 pub mod hook;
+pub mod images;
 pub mod launch;
 pub mod osc;
 pub mod project;

@@ -6,6 +6,7 @@ import type { MenuState } from "./components/ContextMenu";
 import {
   type ClaudeStatus,
   type GitInfo,
+  type ImageItem,
   type PaneRole,
   type Project,
   type SessionInfo,
@@ -26,7 +27,12 @@ export const DEFAULT_SETTINGS: Settings = {
   historySearch: false,
   installUpdateOnExit: true,
   scrollback: 5000,
+  imagePanelWidth: 320,
+  autoOpenImages: false,
 };
+
+/** Images found before this time are restored ones, not news. */
+const STARTED_AT = Date.now();
 
 export const PROJECT_COLORS = [
   "#5b8def",
@@ -68,6 +74,11 @@ type State = {
   /** A short message shown at the bottom of the window. */
   notice: string | null;
   contextMenu: MenuState;
+  /** Images Claude mentioned, by pane id (newest first). */
+  images: Record<string, ImageItem[]>;
+  /** New images per project while its panel was closed. */
+  unseenImages: Record<string, number>;
+  lightbox: { paneId: string; id: string } | null;
 };
 
 type Actions = {
@@ -88,6 +99,8 @@ type Actions = {
   summarize: (id: string) => Promise<void>;
   setSettings: (patch: Partial<Settings>) => void;
   setFocusedRole: (projectId: string, role: PaneRole) => void;
+  setImages: (paneId: string, items: ImageItem[]) => void;
+  toggleImages: (projectId: string, open?: boolean) => void;
   set: (patch: Partial<State>) => void;
 };
 
@@ -108,6 +121,7 @@ function normalizeProject(p: Partial<Project>, i: number): Project {
     shell: p.shell,
     continueOnFirstOpen: p.continueOnFirstOpen,
     splitRatio: p.splitRatio ?? 0.72,
+    imagesOpen: p.imagesOpen ?? false,
     createdAt: p.createdAt ?? Date.now(),
   };
 }
@@ -192,6 +206,9 @@ export const useStore = create<Store>((set, get) => ({
   dialog: null,
   notice: null,
   contextMenu: null,
+  images: {},
+  unseenImages: {},
+  lightbox: null,
 
   set: (patch) => set(patch),
 
@@ -389,6 +406,39 @@ export const useStore = create<Store>((set, get) => ({
 
   setFocusedRole: (projectId, role) =>
     set((s) => ({ focusedRole: { ...s.focusedRole, [projectId]: role } })),
+
+  setImages: (pid, items) => {
+    const s = get();
+    const before = new Map((s.images[pid] ?? []).map((i) => [i.id, i.modified]));
+    const fresh = items.filter(
+      (i) => i.foundAt >= STARTED_AT && before.get(i.id) !== i.modified,
+    ).length;
+    const patch: Partial<State> = { images: { ...s.images, [pid]: items } };
+    const projectId = projectIdOfPane(pid);
+    const project = s.projects.find((p) => p.id === projectId);
+    if (fresh && project && !project.imagesOpen) {
+      if (s.settings.autoOpenImages) {
+        get().toggleImages(projectId, true);
+      } else {
+        patch.unseenImages = {
+          ...s.unseenImages,
+          [projectId]: (s.unseenImages[projectId] ?? 0) + fresh,
+        };
+      }
+    }
+    if (s.lightbox?.paneId === pid && !items.some((i) => i.id === s.lightbox?.id)) {
+      patch.lightbox = null;
+    }
+    set(patch);
+  },
+
+  toggleImages: (projectId, open) => {
+    const p = get().projects.find((x) => x.id === projectId);
+    if (!p) return;
+    const next = open ?? !p.imagesOpen;
+    get().updateProject(projectId, { imagesOpen: next });
+    if (next) set((s) => ({ unseenImages: { ...s.unseenImages, [projectId]: 0 } }));
+  },
 }));
 
 const docTimers: Record<string, number | undefined> = {};

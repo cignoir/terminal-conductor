@@ -446,6 +446,14 @@ export function SettingsDialog() {
         />
         {t("settings.notifications")}
       </label>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={draft.autoOpenImages}
+          onChange={(e) => setDraft({ ...draft, autoOpenImages: e.target.checked })}
+        />
+        {t("settings.autoOpenImages")}
+      </label>
       <div className="check-block">
         <label className="check">
           <input

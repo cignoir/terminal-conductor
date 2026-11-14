@@ -21,6 +21,8 @@ export type Project = {
   continueOnFirstOpen?: boolean;
   /** Height of the Claude pane as a fraction of the project view. */
   splitRatio: number;
+  /** The image panel on the right is open. */
+  imagesOpen?: boolean;
   createdAt: number;
 };
 
@@ -43,6 +45,10 @@ export type Settings = {
   /** Install a downloaded update when the app is closed normally. */
   installUpdateOnExit: boolean;
   scrollback: number;
+  /** Width of the image panel in px. */
+  imagePanelWidth: number;
+  /** Open the image panel when Claude mentions a new image. */
+  autoOpenImages: boolean;
 };
 
 export type ClaudeStatus =
@@ -99,6 +105,17 @@ export type HistoryProgress = {
   done: number;
   total: number;
   conversations: number;
+};
+
+/** An image or video file Claude mentioned (see tc_core::images::ImageItem). */
+export type ImageItem = {
+  kind: "image" | "video";
+  id: string;
+  path: string;
+  name: string;
+  size: number;
+  modified: number;
+  foundAt: number;
 };
 
 export const paneId = (projectId: string, role: PaneRole) =>

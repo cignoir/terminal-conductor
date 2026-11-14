@@ -14,6 +14,7 @@ A Windows terminal app for people who run [Claude Code](https://code.claude.com/
 - **Never wonder "what was this project again?"**: each project shows a one-line description, tags, Claude's last reply, the git branch and pending changes, and when it was last active. Claude can write a summary from the README and git log. Press Ctrl+K to search.
 - **Bring your current conversations along**: a new project offers to continue the folder's latest Claude Code conversation with `claude --continue` (exit Claude in your other terminal first).
 - **Find where a conversation happened**: Ctrl+Shift+F searches your past conversations with Claude Code, Codex CLI and Antigravity CLI (`agy`) by words, file names, errors or folder, then opens that folder and resumes the conversation. Off until you turn it on; see [Conversation search](#conversation-search).
+- **See the images and videos Claude mentions**: when Claude's reply in the top pane names an image or video file (a screenshot it took, a chart it drew), a thumbnail appears in a panel on the right. Click it to zoom, or to play a video. The panel is closed until you open it (Ctrl+Shift+I); see [Images and videos](#images-and-videos).
 - **English and Japanese UI**: follows the Windows display language by default; switch in Settings.
 - **Automatic updates** from GitHub Releases. Download from Settings; the update is installed the next time you close the app (or restart and update right away).
 
@@ -55,6 +56,17 @@ Privacy and security:
 - Settings has **Delete index**, which removes the file. Your original conversation files are never modified; the Antigravity database is opened read-only.
 - The resume command is typed into the top pane only when the conversation id is a plain id (letters, digits, `-`, `_`). If the pane was already running something, the app asks first and otherwise copies the command instead.
 
+## Images and videos
+
+Press Ctrl+Shift+I (or the images button in the project header) to open the panel on the right. It lists the image and video files that Claude mentioned in the top pane, newest first; the button shows a count while the panel is closed.
+
+- Only Claude's own output counts: the text of its replies and the file paths it passes to tools. Your messages and tool output (for example a directory listing) are ignored. The app reads the current session's transcript under `~/.claude/projects` for this, whether or not conversation search is on.
+- Absolute paths (spaces are fine), paths relative to the folder Claude is working in, `~\…`, `/c/…` and `file:///C:/…` are recognized. Network paths (`\\server\share\…`) and files on network drives are never opened.
+- Images: png, jpg, gif, webp, bmp, ico, avif and svg, up to 50 MB. Videos: mp4, m4v, webm, mov, mkv and ogv; what plays depends on the codecs the system's WebView2 supports (H.264 and VP9 do).
+- Point at a thumbnail to outline where its file name appears in the visible part of the top pane.
+- Click a thumbnail to view it. Scroll to zoom, drag to pan, double-click or press 0 / 1 to switch between fit and 100%, ← / → for the previous and next, Esc to close. Right-click for open in the default app, show in Explorer, copy path, copy image and remove from the list.
+- The files are read where they are and never copied. The list is kept in memory; after a restart it is rebuilt from the pane's last session when you open the panel.
+
 ## Keyboard
 
 | Keys | Action |
@@ -67,6 +79,7 @@ Privacy and security:
 | Ctrl+V / right-click | Paste (right-click with a selection copies). When the program in the pane reads the mouse, as Claude Code does, a right-click goes to it and it pastes on its own; Shift+right-click uses the app's paste and copy |
 | Shift+Enter | New line in Claude's prompt |
 | Ctrl+Shift+F | Search past AI conversations |
+| Ctrl+Shift+I | Show or hide images and videos |
 | Ctrl+, | Settings |
 | Right-click a project | Open in Explorer, open, edit, close |
 
