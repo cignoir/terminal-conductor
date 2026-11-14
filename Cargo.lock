@@ -4674,7 +4674,7 @@ dependencies = [
 
 [[package]]
 name = "terminal-conductor"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "parking_lot",
  "serde",
