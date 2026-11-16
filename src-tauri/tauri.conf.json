@@ -35,6 +35,12 @@
   },
   "bundle": {
     "active": true,
+    "resources": {
+      "conpty/conpty.dll": "conpty.dll",
+      "conpty/OpenConsole.exe": "OpenConsole.exe",
+      "conpty/LICENSE": "conpty/LICENSE",
+      "conpty/NOTICE.md": "conpty/NOTICE.md"
+    },
     "targets": [
       "nsis"
     ],

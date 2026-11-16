@@ -3,7 +3,7 @@ import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
-import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { type ITheme, Terminal } from "@xterm/xterm";
@@ -79,9 +79,11 @@ class TermEntry {
     });
     this.term.loadAddon(this.fit);
     this.term.loadAddon(this.search);
-    const unicode = new Unicode11Addon();
-    this.term.loadAddon(unicode);
-    this.term.unicode.activeVersion = "11";
+    // Count a grapheme cluster (e.g. an emoji joined with ZWJ) as one
+    // character, as Claude Code and the bundled ConPTY do; otherwise the
+    // cursor drifts and redraws land in the wrong columns.
+    this.term.loadAddon(new UnicodeGraphemesAddon());
+    this.term.unicode.activeVersion = "15-graphemes";
     this.term.loadAddon(
       new WebLinksAddon((_e, uri) => {
         void openUrl(uri);

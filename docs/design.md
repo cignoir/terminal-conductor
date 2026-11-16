@@ -133,6 +133,7 @@ type Settings = {
 - ConPTY は起動直後にカーソル位置の問い合わせ（`ESC[6n`）を送り、応答があるまで子プロセスを止める。UI が付く前に起動するペイン（autoStart）でも止まらないよう、Rust 側で最初の 1 回だけ応答し、問い合わせ自体はリプレイ用バッファに残さない。
 - アプリ自体が Claude Code の中から起動された場合（開発時など）、`CLAUDECODE` や `CLAUDE_CODE_CHILD_SESSION` などのセッション用の環境変数を引き継ぐと、ペインの Claude が子セッション扱いになり会話が保存されない。PTY を起動するときはこれらを外す。
 - 入力は `pty_write(paneId, bytes)`、サイズ変更は `pty_resize(paneId, cols, rows)` で受ける。
+- ConPTY は Windows に組み込みのものではなく、Windows Terminal の `conpty.dll` と `OpenConsole.exe`（NuGet の `Microsoft.Windows.Console.ConPTY`、MIT）を実行ファイルの横に同梱して使う（2026-11-16 追加）。portable-pty は実行ファイルのフォルダに `conpty.dll` があればそちらを優先する。組み込みの ConPTY は、ZWJ でつないだ絵文字（`🙇‍♀️` など）を 5 マスとして配置する。Claude Code は 2 マスとして描くので、差分の描き直しのたびに後ろの文字がずれ、行頭の文字が右端に出るなど画面が崩れていた。同梱版は書記素クラスタを 1 文字（2 マス）として扱う。xterm.js 側も `@xterm/addon-unicode-graphemes`（`15-graphemes`）で同じ数え方にそろえる。由来・版・SHA-256・更新手順は `src-tauri/conpty/README.md`。アプリを普通に閉じた場合も強制終了した場合も、`OpenConsole.exe` は残らないことを確認した。
 
 ### 4.2 画面状態をどこに持つか（決定）
 

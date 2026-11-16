@@ -138,3 +138,5 @@ See [docs/RELEASING.md](docs/RELEASING.md) for releases and [docs/design.md](doc
 ## License
 
 [MIT](LICENSE)
+
+The installer includes `conpty.dll` and `OpenConsole.exe` from [Windows Terminal](https://github.com/microsoft/terminal) (MIT; see [src-tauri/conpty](src-tauri/conpty)). Windows' built-in pseudoconsole measures emoji joined with ZWJ (such as 🙇‍♀️) differently from the CLIs that draw them, which garbles the screen.

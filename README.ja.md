@@ -134,3 +134,5 @@ docs/             設計書とリリース手順
 ## ライセンス
 
 [MIT](LICENSE)
+
+インストーラーには、[Windows Terminal](https://github.com/microsoft/terminal) の `conpty.dll` と `OpenConsole.exe` を同梱しています（MIT。[src-tauri/conpty](src-tauri/conpty) を参照）。Windows に組み込みの疑似コンソールは、ZWJ でつないだ絵文字（🙇‍♀️ など）の幅を、それを描く CLI と違う数え方で扱うため、画面が崩れるからです。
