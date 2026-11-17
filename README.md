@@ -64,7 +64,7 @@ Press Ctrl+Shift+I (or the images button in the project header) to open the pane
 - Absolute paths (spaces are fine), paths relative to the folder Claude is working in, `~\…`, `/c/…` and `file:///C:/…` are recognized. Network paths (`\\server\share\…`) and files on network drives are never opened.
 - Images: png, jpg, gif, webp, bmp, ico, avif and svg, up to 50 MB. Videos: mp4, m4v, webm, mov, mkv and ogv; what plays depends on the codecs the system's WebView2 supports (H.264 and VP9 do).
 - Point at a thumbnail to outline where its file name appears in the visible part of the top pane.
-- Click a thumbnail to view it. Scroll to zoom, drag to pan, double-click or press 0 / 1 to switch between fit and 100%, ← / → for the previous and next, Esc to close. Right-click for open in the default app, show in Explorer, copy path, copy image and remove from the list.
+- Click a thumbnail to view it. Scroll to zoom, drag to pan, double-click or press 0 / 1 to switch between fit and 100%, ← / → for the previous and next. Click the image or the background (without dragging), the × button at the top right, or press Esc to close. Right-click for open in the default app, show in Explorer, copy path, copy image and remove from the list.
 - The files are read where they are and never copied. The list is kept in memory; after a restart it is rebuilt from the pane's last session when you open the panel.
 
 ## Keyboard

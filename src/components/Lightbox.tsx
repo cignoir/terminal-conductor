@@ -37,6 +37,12 @@ function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; 
   // A click closes the viewer only if the press also began on the backdrop
   // (releasing a drag of the image must not close it).
   const pressedBackdrop = useRef(false);
+  // Where the last press began, to tell a click from a drag.
+  const pressAt = useRef<{ x: number; y: number } | null>(null);
+  // A click on the image closes the viewer after a short wait, so that a
+  // double-click can cancel it and zoom instead.
+  const closeTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(closeTimer.current), []);
 
   const close = () => useStore.getState().set({ lightbox: null });
   const go = (d: number) => {
@@ -132,7 +138,9 @@ function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; 
         }}
         onPointerDown={(e) => {
           pressedBackdrop.current = e.target === e.currentTarget;
+          pressAt.current = { x: e.clientX, y: e.clientY };
           if (e.button !== 0 || !view || pressedBackdrop.current) return;
+          if ((e.target as Element).closest("button")) return;
           (e.target as Element).setPointerCapture(e.pointerId);
           dragRef.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
         }}
@@ -145,6 +153,7 @@ function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; 
           dragRef.current = null;
         }}
         onDoubleClick={(e) => {
+          window.clearTimeout(closeTimer.current);
           if (video || e.target === e.currentTarget) return;
           const [cx, cy] = stagePoint(e);
           if (isFit) actualSize(cx, cy);
@@ -171,6 +180,13 @@ function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; 
             alt={item.name}
             draggable={false}
             onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+            onClick={(e) => {
+              window.clearTimeout(closeTimer.current);
+              const p = pressAt.current;
+              const moved = !p || Math.hypot(e.clientX - p.x, e.clientY - p.y) > 4;
+              if (e.button !== 0 || moved || e.detail > 1) return;
+              closeTimer.current = window.setTimeout(close, 300);
+            }}
             onError={() => setBroken(true)}
             onContextMenu={(e) => imageMenu(e, paneId, item, t)}
             style={
@@ -184,6 +200,15 @@ function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; 
             }
           />
         )}
+        <button
+          type="button"
+          className="lightbox__close"
+          aria-label={t("images.closeViewer")}
+          data-tip={`${t("images.closeViewer")} (Esc)`}
+          onClick={close}
+        >
+          <X size={22} aria-hidden />
+        </button>
         {index > 0 && (
           <button
             type="button"
