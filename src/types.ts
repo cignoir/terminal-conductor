@@ -14,6 +14,11 @@ export type Project = {
   /** Overrides the default shell when set. */
   shell?: ShellName;
   /**
+   * Where the bottom pane's shell starts, when not the project folder.
+   * Absolute, or relative to the project folder.
+   */
+  shellDir?: string;
+  /**
    * On the first open, continue the folder's latest Claude conversation
    * (e.g. one started in another terminal) instead of starting a new one.
    * Cleared after that first attempt.

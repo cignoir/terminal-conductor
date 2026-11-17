@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { useStore } from "../store";
+import { paneCwd, useStore } from "../store";
 import { getTerminal } from "../terminal/cache";
 import { useT } from "../i18n";
 import { History, MessageSquarePlus, Play, RotateCcw, X } from "lucide-react";
@@ -77,7 +77,8 @@ export function TerminalPane({ project, role, focused, onFocus }: Props) {
       await entry.attach();
       const { cols, rows } = entry.size;
       const launch = launchModeFor(project, role, useStore.getState().settings, fresh);
-      const spawned = await api.ensure({ paneId: id, cwd: project.path, shell, cols, rows, launch });
+      const cwd = await paneCwd(project, role);
+      const spawned = await api.ensure({ paneId: id, cwd, shell, cols, rows, launch });
       // Continuing is a one-time migration step; don't try it again.
       if (spawned && launch === "resumeOrContinue") {
         useStore.getState().updateProject(project.id, { continueOnFirstOpen: false });

@@ -126,6 +126,21 @@ function normalizeProject(p: Partial<Project>, i: number): Project {
   };
 }
 
+/** Resolves the folder the bottom pane's shell starts in. */
+export function shellDirOf(project: Pick<Project, "path" | "shellDir">): string {
+  const dir = project.shellDir?.trim();
+  if (!dir) return project.path;
+  if (/^[a-zA-Z]:[\\/]/.test(dir) || /^[\\/]/.test(dir)) return dir;
+  return `${project.path.replace(/[\\/]+$/, "")}\\${dir.replace(/^\.[\\/]/, "")}`;
+}
+
+/** The folder a pane starts in; falls back to the project folder if gone. */
+export async function paneCwd(project: Project, role: "claude" | "shell"): Promise<string> {
+  if (role === "claude" || !project.shellDir?.trim()) return project.path;
+  const dir = shellDirOf(project);
+  return (await api.pathExists(dir).catch(() => false)) ? dir : project.path;
+}
+
 export function folderName(path: string): string {
   const parts = path.replace(/[\\/]+$/, "").split(/[\\/]/);
   return parts[parts.length - 1] || path;

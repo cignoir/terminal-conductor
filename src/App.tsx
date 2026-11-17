@@ -18,7 +18,7 @@ import { ContextMenu } from "./components/ContextMenu";
 import { Lightbox } from "./components/Lightbox";
 import { Tooltip } from "./components/Tooltip";
 import { Sidebar } from "./components/Sidebar";
-import { setNotifier, useStore } from "./store";
+import { paneCwd, setNotifier, useStore } from "./store";
 import { startUpdater } from "./updater";
 import { parseOsc7501 } from "./terminal/osc7501";
 import { resolveLang, useT } from "./i18n";
@@ -54,7 +54,7 @@ async function autoStart() {
         const launch = launchModeFor(p, role, s.settings);
         const spawned = await api.ensure({
           paneId: id,
-          cwd: p.path,
+          cwd: await paneCwd(p, role),
           shell: p.shell ?? s.settings.defaultShell,
           cols: 120,
           rows: role === "claude" ? 36 : 12,

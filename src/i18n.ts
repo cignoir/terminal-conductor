@@ -129,6 +129,10 @@ const en = {
   "dialog.tagsPlaceholder": "work, rust",
   "dialog.color": "Color",
   "dialog.shell": "Shell",
+  "dialog.shellDir": "Bottom pane folder",
+  "dialog.shellDirHint": "Where the shell in the bottom pane starts. A relative path is taken from the project folder. Applies the next time the pane starts.",
+  "dialog.shellDirPlaceholder": "Same as the project folder",
+  "dialog.shellDirNotFound": "Bottom pane folder not found",
   "dialog.autoStart": "Start as soon as the app starts (otherwise on first open)",
   "dialog.continue": "Continue this folder's latest Claude conversation (claude --continue)",
   "dialog.continueHint":
@@ -356,6 +360,10 @@ const ja: Record<MessageKey, string> = {
   "dialog.tagsPlaceholder": "仕事, rust",
   "dialog.color": "色",
   "dialog.shell": "シェル",
+  "dialog.shellDir": "下のペインのフォルダ",
+  "dialog.shellDirHint": "下のペインのシェルを開く場所です。相対パスはプロジェクトのフォルダから数えます。次にペインを起動したときから使われます。",
+  "dialog.shellDirPlaceholder": "プロジェクトのフォルダと同じ",
+  "dialog.shellDirNotFound": "下のペインのフォルダが見つかりません",
   "dialog.autoStart": "アプリ起動時にすぐ立ち上げる（オフなら最初に開いたときに起動）",
   "dialog.continue": "このフォルダの直前の Claude の会話を引き継ぐ（claude --continue）",
   "dialog.continueHint":

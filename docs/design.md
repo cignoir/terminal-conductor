@@ -91,6 +91,7 @@ type Project = {
   tags: string[];
   autoStart: boolean;      // 起動時にすぐ PTY を立ち上げるか（既定 false）
   shell?: "cmd" | "pwsh" | "powershell";  // 未指定なら設定の既定シェル
+  shellDir?: string;       // 下のペインのシェルを開く場所。相対パスはプロジェクトのフォルダから。見つからなければプロジェクトのフォルダで開く
   continueOnFirstOpen?: boolean;  // 最初に開いたとき claude --continue で直前の会話を引き継ぐ（1 回だけ）
   splitRatio: number;      // Claude ペインの高さの割合
   createdAt: number;

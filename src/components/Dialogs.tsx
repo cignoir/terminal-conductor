@@ -1,7 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
-import { PROJECT_COLORS, folderName, useStore } from "../store";
+import { PROJECT_COLORS, folderName, shellDirOf, useStore } from "../store";
 import type { Project, ShellName } from "../types";
 import { applySettingsToAll } from "../terminal/cache";
 import { confirmDialog } from "../confirm";
@@ -85,6 +85,13 @@ export function ProjectDialog({ projectId }: { projectId?: string }) {
     }
   };
 
+  const pickShellDir = async () => {
+    const base = (draft.path ?? "").trim();
+    const current = draft.shellDir?.trim() && base ? shellDirOf({ path: base, shellDir: draft.shellDir }) : base;
+    const dir = await open({ directory: true, defaultPath: current || undefined });
+    if (typeof dir === "string") patch({ shellDir: dir });
+  };
+
   const save = async () => {
     // Pasted paths often carry spaces (incl. full-width) or the quotes that
     // Explorer's "Copy as path" adds.
@@ -93,9 +100,15 @@ export function ProjectDialog({ projectId }: { projectId?: string }) {
       setError(t("dialog.folderNotFound"));
       return;
     }
+    const shellDir = (draft.shellDir ?? "").trim().replace(/^"(.*)"$/, "$1").trim() || undefined;
+    if (shellDir && !(await api.pathExists(shellDirOf({ path, shellDir })))) {
+      setError(t("dialog.shellDirNotFound"));
+      return;
+    }
     const value: Partial<Project> = {
       ...draft,
       path,
+      shellDir,
       name: (draft.name || folderName(path)).trim(),
       tags: tags.split(/[,、]/).map((t) => t.trim()).filter(Boolean),
     };
@@ -191,6 +204,19 @@ export function ProjectDialog({ projectId }: { projectId?: string }) {
             </option>
           ))}
         </select>
+      </Field>
+      <Field label={t("dialog.shellDir")} hint={t("dialog.shellDirHint")}>
+        <div className="field__row">
+          <input
+            value={draft.shellDir ?? ""}
+            onChange={(e) => patch({ shellDir: e.target.value })}
+            placeholder={t("dialog.shellDirPlaceholder")}
+            spellCheck={false}
+          />
+          <button className="btn btn--small" onClick={() => void pickShellDir()}>
+            {t("dialog.browse")}
+          </button>
+        </div>
       </Field>
       <label className="check">
         <input

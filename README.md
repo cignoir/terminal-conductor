@@ -8,7 +8,7 @@ A Windows terminal app for people who run [Claude Code](https://code.claude.com/
 
 ## Features
 
-- **Two panes per project**: one for your AI CLI on top, one for commands below (cmd or PowerShell). Both are plain shells; nothing starts an AI on its own unless you turn that on.
+- **Two panes per project**: one for your AI CLI on top, one for commands below (cmd or PowerShell). Both are plain shells; nothing starts an AI on its own unless you turn that on. The bottom pane can start in a different folder from the project's, set in the project's edit dialog.
 - **Everything comes back after a restart**: open projects and split sizes are remembered. If a pane had a Claude Code conversation, it offers a **Resume** button that runs `claude --resume <session id>` (or turn on automatic start in Settings to resume without the click).
 - **Status at a glance**: the sidebar shows whether the AI in each project is working, needs permission, is done, or hit an error — for Claude Code, Codex CLI and Antigravity CLI. Background projects that need you also raise a Windows notification.
 - **Never wonder "what was this project again?"**: each project shows a one-line description, tags, Claude's last reply, the git branch and pending changes, and when it was last active. Claude can write a summary from the README and git log. Press Ctrl+K to search.
