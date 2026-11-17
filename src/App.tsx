@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import "@xterm/xterm/css/xterm.css";
 import "./App.css";
 import { api } from "./api";
-import { ImportDialog, ProjectDialog, SettingsDialog } from "./components/Dialogs";
+import { CloseDialog, ImportDialog, ProjectDialog, SettingsDialog, hideToTray } from "./components/Dialogs";
 import { ProjectView } from "./components/ProjectView";
 import { launchModeFor } from "./components/TerminalPane";
 import { QuickSwitcher } from "./components/QuickSwitcher";
@@ -21,7 +21,7 @@ import { Sidebar } from "./components/Sidebar";
 import { paneCwd, setNotifier, useStore } from "./store";
 import { startUpdater } from "./updater";
 import { parseOsc7501 } from "./terminal/osc7501";
-import { resolveLang, useT } from "./i18n";
+import { resolveLang, t as translateNow, useT } from "./i18n";
 import { focusTerminal } from "./terminal/cache";
 import { type ImageItem, type StatusUpdate, paneId } from "./types";
 
@@ -96,6 +96,7 @@ export default function App() {
   const switcherOpen = useStore((s) => s.switcherOpen);
   const hasProjects = useStore((s) => s.projects.length > 0);
   const claudePath = useStore((s) => s.claudePath);
+  const closePrompt = useStore((s) => s.closePrompt);
 
   useEffect(() => {
     const unsubs: Promise<() => void>[] = [];
@@ -115,6 +116,13 @@ export default function App() {
       listen<{ paneId: string; items: ImageItem[] }>("images-changed", (e) =>
         useStore.getState().setImages(e.payload.paneId, e.payload.items),
       ),
+    );
+    unsubs.push(
+      listen("close-requested", () => {
+        const s = useStore.getState();
+        if (s.settings.closeAction === "tray") void hideToTray(translateNow);
+        else s.set({ closePrompt: true });
+      }),
     );
     void useStore
       .getState()
@@ -259,6 +267,7 @@ export default function App() {
       {dialog?.kind === "history" && <ConversationSearch />}
       <Notice />
       <Lightbox />
+      {closePrompt && <CloseDialog />}
       <ContextMenu />
       <Tooltip />
     </div>

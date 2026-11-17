@@ -653,6 +653,93 @@ fn install_update_on_exit(app: &AppHandle) -> bool {
         .unwrap_or(true)
 }
 
+/// What the window's close button does: "ask" (default), "tray" or "quit".
+fn close_action(app: &AppHandle) -> String {
+    app.try_state::<AppState>()
+        .and_then(|state| load_json::<Value>(&file(&state, "settings.json")))
+        .and_then(|s| s.get("closeAction").and_then(|v| v.as_str()).map(str::to_string))
+        .unwrap_or_else(|| "ask".into())
+}
+
+/// Stops the panes, applies a downloaded update if allowed, and exits.
+fn quit_app(app: &AppHandle) {
+    if CLOSING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        shutdown_app(&app);
+        // A downloaded update is applied now unless the user turned that
+        // off; the app does not start again.
+        if install_update_on_exit(&app) {
+            updater::install_on_exit(&app);
+        }
+        app.exit(0);
+    });
+}
+
+const TRAY_ID: &str = "main";
+
+/// Brings the window back from the tray (or from being minimized).
+fn show_main_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+    let _ = app.remove_tray_by_id(TRAY_ID);
+}
+
+/// Hides the window and shows an icon in the notification area; the panes
+/// keep running. The labels come from the UI so they follow its language.
+#[tauri::command]
+fn app_hide_to_tray(
+    app: AppHandle,
+    tooltip: String,
+    show_label: String,
+    quit_label: String,
+) -> Result<(), String> {
+    use tauri::menu::{Menu, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    if app.tray_by_id(TRAY_ID).is_none() {
+        let show = MenuItem::with_id(&app, "show", &show_label, true, None::<&str>).map_err(|e| e.to_string())?;
+        let quit = MenuItem::with_id(&app, "quit", &quit_label, true, None::<&str>).map_err(|e| e.to_string())?;
+        let menu = Menu::with_items(&app, &[&show, &quit]).map_err(|e| e.to_string())?;
+        let mut tray = TrayIconBuilder::with_id(TRAY_ID)
+            .tooltip(&tooltip)
+            .menu(&menu)
+            .show_menu_on_left_click(false)
+            .on_menu_event(|app, event| match event.id().as_ref() {
+                "show" => show_main_window(app),
+                "quit" => quit_app(app),
+                _ => {}
+            })
+            .on_tray_icon_event(|tray, event| {
+                if let TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                } = event
+                {
+                    show_main_window(tray.app_handle());
+                }
+            });
+        if let Some(icon) = app.default_window_icon() {
+            tray = tray.icon(icon.clone());
+        }
+        tray.build(&app).map_err(|e| e.to_string())?;
+    }
+    if let Some(w) = app.get_webview_window("main") {
+        w.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn app_quit(app: AppHandle) {
+    quit_app(&app);
+}
+
 /// Stops every pane cleanly and saves state. Used on exit and before an update.
 pub(crate) fn shutdown_app(app: &AppHandle) {
     if let Some(state) = app.try_state::<AppState>() {
@@ -694,10 +781,7 @@ pub fn run() {
     tauri::Builder::default()
         // Must be the first plugin so a second launch exits before doing work.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.unminimize();
-                let _ = w.set_focus();
-            }
+            show_main_window(app);
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(updater::PendingUpdate(std::sync::Mutex::new(None)))
@@ -752,20 +836,18 @@ pub fn run() {
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
-                if CLOSING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                if CLOSING.load(std::sync::atomic::Ordering::SeqCst) {
                     return;
                 }
                 api.prevent_close();
-                let app = window.app_handle().clone();
-                std::thread::spawn(move || {
-                    shutdown_app(&app);
-                    // A downloaded update is applied now unless the user
-                    // turned that off; the app does not start again.
-                    if install_update_on_exit(&app) {
-                        updater::install_on_exit(&app);
-                    }
-                    app.exit(0);
-                });
+                let app = window.app_handle();
+                // Asking and hiding need the UI (its language, its dialog);
+                // quitting does not, so it still works if the UI is stuck.
+                if close_action(app) == "quit" {
+                    quit_app(app);
+                } else {
+                    let _ = app.emit("close-requested", ());
+                }
             }
             tauri::WindowEvent::Destroyed => {
                 if let Some(state) = window.app_handle().try_state::<AppState>() {
@@ -803,6 +885,8 @@ pub fn run() {
             images_remove,
             images_clear,
             image_copy,
+            app_hide_to_tray,
+            app_quit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

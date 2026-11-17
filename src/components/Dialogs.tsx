@@ -2,7 +2,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
 import { PROJECT_COLORS, folderName, shellDirOf, useStore } from "../store";
-import type { Project, ShellName } from "../types";
+import type { CloseAction, Project, ShellName } from "../types";
 import { applySettingsToAll } from "../terminal/cache";
 import { confirmDialog } from "../confirm";
 import { UpdatePanel } from "./UpdatePanel";
@@ -464,6 +464,16 @@ export function SettingsDialog() {
           ))}
         </select>
       </Field>
+      <Field label={t("settings.closeAction")}>
+        <select
+          value={draft.closeAction}
+          onChange={(e) => setDraft({ ...draft, closeAction: e.target.value as CloseAction })}
+        >
+          <option value="ask">{t("settings.closeAsk")}</option>
+          <option value="tray">{t("settings.closeTray")}</option>
+          <option value="quit">{t("settings.closeQuit")}</option>
+        </select>
+      </Field>
       <label className="check">
         <input
           type="checkbox"
@@ -502,6 +512,57 @@ export function SettingsDialog() {
         <dt>{t("settings.dataDir")}</dt>
         <dd>{dataDir}</dd>
       </dl>
+    </Modal>
+  );
+}
+
+/** Hides the window to the notification area; the panes keep running. */
+export async function hideToTray(t: ReturnType<typeof useT>) {
+  try {
+    await api.hideToTray("Terminal Conductor", t("close.trayShow"), t("close.trayQuit"));
+  } catch (e) {
+    useStore.getState().set({ notice: String(e) });
+  }
+}
+
+/** Asked when the window's close button is pressed (unless set otherwise). */
+export function CloseDialog() {
+  const t = useT();
+  const set = useStore((s) => s.set);
+  const setSettings = useStore((s) => s.setSettings);
+  const [remember, setRemember] = useState(false);
+  const cancel = () => set({ closePrompt: false });
+  const choose = (action: "tray" | "quit") => {
+    set({ closePrompt: false });
+    if (remember) setSettings({ closeAction: action });
+    if (action === "tray") void hideToTray(t);
+    else void api.quit();
+  };
+  return (
+    <Modal
+      title={t("close.title")}
+      onClose={cancel}
+      footer={
+        <>
+          <button className="btn btn--danger btn--small" onClick={() => choose("quit")}>
+            {t("close.quit")}
+          </button>
+          <span className="spacer" />
+          <button className="btn btn--ghost" onClick={cancel}>
+            {t("dialog.cancel")}
+          </button>
+          {/* The safe choice takes the focus, so Enter does not quit. */}
+          <button className="btn btn--primary" autoFocus onClick={() => choose("tray")}>
+            {t("close.tray")}
+          </button>
+        </>
+      }
+    >
+      <p className="modal__text muted">{t("close.body")}</p>
+      <label className="check">
+        <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+        {t("close.remember")}
+      </label>
     </Modal>
   );
 }

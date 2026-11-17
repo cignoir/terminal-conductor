@@ -16,7 +16,8 @@ A Windows terminal app for people who run [Claude Code](https://code.claude.com/
 - **Find where a conversation happened**: Ctrl+Shift+F searches your past conversations with Claude Code, Codex CLI and Antigravity CLI (`agy`) by words, file names, errors or folder, then opens that folder and resumes the conversation. Off until you turn it on; see [Conversation search](#conversation-search).
 - **See the images and videos Claude mentions**: when Claude's reply in the top pane names an image or video file (a screenshot it took, a chart it drew), a thumbnail appears in a panel on the right. Click it to zoom, or to play a video. The panel is closed until you open it (Ctrl+Shift+I); see [Images and videos](#images-and-videos).
 - **English and Japanese UI**: follows the Windows display language by default; switch in Settings.
-- **Automatic updates** from GitHub Releases. Download from Settings; the update is installed the next time you close the app (or restart and update right away).
+- **Automatic updates** from GitHub Releases. Download from Settings; the update is installed the next time you quit the app (or restart and update right away).
+- **Close button asks first**: the window's × asks whether to quit or minimize to the notification area, where every pane keeps running; click the tray icon to bring the window back. Settings can make it always minimize or always quit.
 
 ## Install
 

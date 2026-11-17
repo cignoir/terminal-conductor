@@ -1564,3 +1564,8 @@ mark {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+.modal__text {
+  margin: 0;
+  line-height: 1.6;
+}

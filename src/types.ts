@@ -54,7 +54,11 @@ export type Settings = {
   imagePanelWidth: number;
   /** Open the image panel when Claude mentions a new image. */
   autoOpenImages: boolean;
+  /** What the window's close button does. */
+  closeAction: CloseAction;
 };
+
+export type CloseAction = "ask" | "tray" | "quit";
 
 export type ClaudeStatus =
   | "idle"

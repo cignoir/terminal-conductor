@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   scrollback: 5000,
   imagePanelWidth: 320,
   autoOpenImages: false,
+  closeAction: "ask",
 };
 
 /** Images found before this time are restored ones, not news. */
@@ -79,6 +80,8 @@ type State = {
   /** New images per project while its panel was closed. */
   unseenImages: Record<string, number>;
   lightbox: { paneId: string; id: string } | null;
+  /** The "quit or minimize to the tray?" prompt is open. */
+  closePrompt: boolean;
 };
 
 type Actions = {
@@ -224,6 +227,7 @@ export const useStore = create<Store>((set, get) => ({
   images: {},
   unseenImages: {},
   lightbox: null,
+  closePrompt: false,
 
   set: (patch) => set(patch),
 

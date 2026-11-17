@@ -61,6 +61,9 @@ export const api = {
   conversationResume: (paneId: string, agent: Agent, id: string, typeLine = true) =>
     invoke<void>("conversation_resume", { paneId, agent, id, typeLine }),
   pathExists: (path: string) => invoke<boolean>("path_exists", { path }),
+  hideToTray: (tooltip: string, showLabel: string, quitLabel: string) =>
+    invoke<void>("app_hide_to_tray", { tooltip, showLabel, quitLabel }),
+  quit: () => invoke<void>("app_quit"),
   imagesList: (paneId: string) => invoke<ImageItem[]>("images_list", { paneId }),
   imagesRemove: (paneId: string, id: string) =>
     invoke<ImageItem[]>("images_remove", { paneId, id }),
