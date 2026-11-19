@@ -1569,3 +1569,44 @@ mark {
   margin: 0;
   line-height: 1.6;
 }
+
+.imgthumb__icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.imgthumb__icon--audio {
+  color: #c4a1f0;
+}
+
+.imgthumb__icon--html {
+  color: #7fb4f0;
+}
+
+.lightbox__audio {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-2);
+}
+
+.lightbox__audio-name {
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.lightbox__audio audio {
+  width: min(560px, 80%);
+}

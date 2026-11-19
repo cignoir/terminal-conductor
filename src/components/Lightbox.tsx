@@ -1,6 +1,6 @@
 import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { ChevronLeft, ChevronRight, Copy, ExternalLink, FolderOpen, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Copy, ExternalLink, FolderOpen, Music, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { imageUrl } from "../api";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -17,7 +17,9 @@ type View = { scale: number; x: number; y: number };
 /** Full-window viewer for an image from the image panel. */
 export function Lightbox() {
   const box = useStore((s) => s.lightbox);
-  const items = useStore((s) => (box ? (s.images[box.paneId] ?? EMPTY) : EMPTY));
+  const all = useStore((s) => (box ? (s.images[box.paneId] ?? EMPTY) : EMPTY));
+  // Pages open in the browser, so the viewer steps over them.
+  const items = useMemo(() => all.filter((i) => i.kind !== "html"), [all]);
   if (!box) return null;
   const index = items.findIndex((i) => i.id === box.id);
   if (index < 0) return null;
@@ -27,7 +29,8 @@ export function Lightbox() {
 function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; index: number }) {
   const t = useT();
   const item = items[index];
-  const video = item.kind === "video";
+  // Video and audio play in a player; only images zoom and pan.
+  const video = item.kind === "video" || item.kind === "audio";
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
@@ -162,6 +165,19 @@ function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; 
       >
         {broken ? (
           <p className="lightbox__missing">{t("images.missing")}</p>
+        ) : item.kind === "audio" ? (
+          <div
+            className="lightbox__audio"
+            onClick={(e) => {
+              // The empty area around the player acts as the backdrop.
+              if (e.target === e.currentTarget) close();
+            }}
+            onContextMenu={(e) => imageMenu(e, paneId, item, t)}
+          >
+            <Music size={56} aria-hidden />
+            <span className="lightbox__audio-name">{item.name}</span>
+            <audio src={imageUrl(item, "full")} controls autoPlay onError={() => setBroken(true)} />
+          </div>
         ) : video ? (
           <video
             className="lightbox__video"
@@ -236,9 +252,13 @@ function Viewer({ paneId, items, index }: { paneId: string; items: ImageItem[]; 
           <span className="lightbox__path">{item.path}</span>
         </div>
         <span className="lightbox__meta">
-          {natural && `${natural.w} × ${natural.h}`}
-          {view && ` · ${Math.round(view.scale * 100)}%`}
-          {items.length > 1 && ` · ${index + 1} / ${items.length}`}
+          {[
+            natural && natural.w > 0 && `${natural.w} × ${natural.h}`,
+            view && `${Math.round(view.scale * 100)}%`,
+            items.length > 1 && `${index + 1} / ${items.length}`,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
         {!video && (
           <>

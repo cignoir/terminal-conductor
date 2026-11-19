@@ -1,5 +1,6 @@
-//! Finds image and video files that Claude Code mentions in its replies, for
-//! the image panel. Only the assistant's own output counts: text blocks and the path
+//! Finds image, video, audio and HTML files that Claude Code mentions in its
+//! replies, for the image panel. HTML files are only listed (the UI opens
+//! them in the browser); they are never served to the webview. Only the assistant's own output counts: text blocks and the path
 //! arguments of its tool calls. User messages and tool results are skipped.
 //!
 //! Network paths are never touched: UNC paths (including `\\?\UNC\` and
@@ -15,10 +16,12 @@ use std::path::{Path, PathBuf};
 pub const EXTENSIONS: &[&str] = &[
     "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "avif", "svg", // images
     "mp4", "m4v", "webm", "mov", "mkv", "ogv", // videos
+    "mp3", "wav", "flac", "ogg", "oga", "opus", "m4a", "aac", // audio
+    "html", "htm", // pages, opened in the browser
 ];
 /// Images are read whole (for thumbnails and the clipboard).
 pub const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;
-/// Videos are served in ranges, never read whole.
+/// Videos and audio are served in ranges, never read whole.
 pub const MAX_VIDEO_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 /// The most bytes one range response carries.
 pub const MAX_RANGE_BYTES: u64 = 4 * 1024 * 1024;
@@ -240,6 +243,58 @@ pub fn sniff(head: &[u8]) -> Option<&'static str> {
     }
 }
 
+/// Audio formats recognised by their first bytes.
+fn sniff_audio(head: &[u8]) -> Option<&'static str> {
+    if head.starts_with(b"fLaC") {
+        Some("audio/flac")
+    } else if head.len() >= 12 && &head[..4] == b"RIFF" && &head[8..12] == b"WAVE" {
+        Some("audio/wav")
+    } else if head.starts_with(b"ID3") {
+        Some("audio/mpeg")
+    } else if head.len() >= 2 && head[0] == 0xFF && head[1] & 0xE0 == 0xE0 {
+        // An MPEG audio frame sync; layer bits 00 mean an ADTS AAC stream.
+        Some(if head[1] & 0x06 == 0 { "audio/aac" } else { "audio/mpeg" })
+    } else {
+        None
+    }
+}
+
+/// The MIME type of a file the panel lists, from its first bytes and, where
+/// the bytes don't tell (Ogg, MP4 audio, HTML), its extension.
+pub fn media_type(head: &[u8], path: &Path) -> Option<&'static str> {
+    let ext = path
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
+    if matches!(ext.as_str(), "html" | "htm") {
+        // Text only; a NUL byte means something else was given the name.
+        return (!head.contains(&0)).then_some("text/html");
+    }
+    if head.starts_with(b"OggS") {
+        return Some(if ext == "ogv" { "video/ogg" } else { "audio/ogg" });
+    }
+    if head.len() >= 12
+        && &head[4..8] == b"ftyp"
+        && (matches!(&head[8..12], b"M4A " | b"M4B ") || matches!(ext.as_str(), "m4a" | "aac"))
+    {
+        return Some("audio/mp4");
+    }
+    sniff(head).or_else(|| sniff_audio(head))
+}
+
+/// "image", "video", "audio" or "html", from a type `media_type` returned.
+pub fn kind_of(mime: &str) -> &'static str {
+    if mime.starts_with("video/") {
+        "video"
+    } else if mime.starts_with("audio/") {
+        "audio"
+    } else if mime == "text/html" {
+        "html"
+    } else {
+        "image"
+    }
+}
+
 fn read_head(path: &Path) -> Option<Vec<u8>> {
     use std::io::Read;
     let mut f = std::fs::File::open(path).ok()?;
@@ -249,17 +304,14 @@ fn read_head(path: &Path) -> Option<Vec<u8>> {
     Some(buf)
 }
 
-pub fn is_video(mime: &str) -> bool {
-    mime.starts_with("video/")
-}
-
-/// A mentioned image or video that exists on a local disk.
+/// A mentioned file of a listed kind that exists on a local disk.
 #[derive(Debug, Clone)]
 pub struct Resolved {
     pub path: PathBuf,
     pub size: u64,
     pub modified: u64,
-    pub video: bool,
+    /// See `kind_of`.
+    pub kind: &'static str,
 }
 
 fn mtime_ms(meta: &std::fs::Metadata) -> u64 {
@@ -280,15 +332,15 @@ pub fn resolve(candidate: &str, cwd: &str) -> Option<Resolved> {
     }
     let canon = std::fs::canonicalize(&p).ok()?;
     let path = local_display_path(&canon)?;
-    let video = is_video(sniff(&read_head(&path)?)?);
-    if !video && meta.len() > MAX_FILE_BYTES {
+    let kind = kind_of(media_type(&read_head(&path)?, &path)?);
+    if kind == "image" && meta.len() > MAX_FILE_BYTES {
         return None;
     }
     Some(Resolved {
         size: meta.len(),
         modified: mtime_ms(&meta),
         path,
-        video,
+        kind,
     })
 }
 
@@ -445,7 +497,7 @@ pub struct ImageItem {
     pub modified: u64,
     /// When Claude mentioned it (ms).
     pub found_at: u64,
-    /// "image" or "video".
+    /// "image", "video", "audio" or "html".
     pub kind: &'static str,
 }
 
@@ -510,7 +562,7 @@ impl ImageRegistry {
                 it.modified = r.modified;
                 it.size = r.size;
                 it.found_at = found_at.max(it.found_at);
-                it.kind = if r.video { "video" } else { "image" };
+                it.kind = r.kind;
                 pane.items.insert(0, it);
             } else {
                 let id = uuid::Uuid::new_v4().simple().to_string();
@@ -524,7 +576,7 @@ impl ImageRegistry {
                         size: r.size,
                         modified: r.modified,
                         found_at,
-                        kind: if r.video { "video" } else { "image" },
+                        kind: r.kind,
                     },
                 );
                 changed = true;
@@ -622,11 +674,11 @@ pub fn read_image(path: &Path) -> Option<(Vec<u8>, &'static str, u64)> {
         return None;
     }
     let data = std::fs::read(path).ok()?;
-    let mime = sniff(&data)?;
-    (!is_video(mime)).then_some((data, mime, mtime_ms(&meta)))
+    let mime = media_type(&data, path)?;
+    (kind_of(mime) == "image").then_some((data, mime, mtime_ms(&meta)))
 }
 
-/// One HTTP range of a video file.
+/// One HTTP range of a video or audio file.
 pub struct VideoRange {
     pub data: Vec<u8>,
     pub start: u64,
@@ -654,9 +706,9 @@ fn parse_range(header: Option<&str>, total: u64) -> Option<(u64, u64)> {
     (start <= end && start < total).then_some((start, end))
 }
 
-/// Reads part of a video. Responses are capped at MAX_RANGE_BYTES; the
-/// player asks for the rest as it needs it.
-pub fn read_video_range(path: &Path, range: Option<&str>) -> Option<VideoRange> {
+/// Reads part of a video or audio file. Responses are capped at
+/// MAX_RANGE_BYTES; the player asks for the rest as it needs it.
+pub fn read_media_range(path: &Path, range: Option<&str>) -> Option<VideoRange> {
     use std::io::Read;
     let meta = std::fs::metadata(path).ok()?;
     let total = meta.len();
@@ -666,7 +718,7 @@ pub fn read_video_range(path: &Path, range: Option<&str>) -> Option<VideoRange> 
     let mut f = std::fs::File::open(path).ok()?;
     let mut head = vec![0u8; 64];
     let n = f.read(&mut head).ok()?;
-    let mime = sniff(&head[..n]).filter(|m| is_video(m))?;
+    let mime = media_type(&head[..n], path).filter(|m| matches!(kind_of(m), "video" | "audio"))?;
     let (start, end) = match range {
         Some(_) => parse_range(range, total)?,
         None => (0, total - 1),
@@ -807,6 +859,47 @@ mod tests {
     }
 
     #[test]
+    fn audio_and_html_types() {
+        let p = |n: &str| PathBuf::from(n);
+        assert_eq!(media_type(b"fLaC\0\0\0\x22", &p("a.flac")), Some("audio/flac"));
+        assert_eq!(media_type(b"RIFF\x24\0\0\0WAVEfmt ", &p("a.wav")), Some("audio/wav"));
+        assert_eq!(media_type(b"ID3\x04\0\0", &p("a.mp3")), Some("audio/mpeg"));
+        assert_eq!(media_type(&[0xFF, 0xFB, 0x90, 0x64], &p("a.mp3")), Some("audio/mpeg"));
+        assert_eq!(media_type(&[0xFF, 0xF1, 0x50, 0x80], &p("a.aac")), Some("audio/aac"));
+        assert_eq!(media_type(&[0xFF, 0xD8, 0xFF, 0xE0], &p("a.jpg")), Some("image/jpeg"));
+        assert_eq!(media_type(b"OggS\0\x02", &p("a.ogg")), Some("audio/ogg"));
+        assert_eq!(media_type(b"OggS\0\x02", &p("a.opus")), Some("audio/ogg"));
+        assert_eq!(media_type(b"OggS\0\x02", &p("a.ogv")), Some("video/ogg"));
+        assert_eq!(media_type(b"\0\0\0\x20ftypM4A \0\0\0\0", &p("a.m4a")), Some("audio/mp4"));
+        assert_eq!(media_type(b"\0\0\0\x20ftypisom\0\0\0\0", &p("a.m4a")), Some("audio/mp4"));
+        assert_eq!(media_type(b"\0\0\0\x20ftypisom\0\0\0\0", &p("a.mp4")), Some("video/mp4"));
+        assert_eq!(media_type(b"<!doctype html><svg></svg>", &p("a.html")), Some("text/html"));
+        assert_eq!(media_type(b"\x89PNG\0", &p("a.html")), None, "binary with an .html name");
+        assert_eq!(kind_of("audio/flac"), "audio");
+        assert_eq!(kind_of("text/html"), "html");
+
+        let dir = std::env::temp_dir().join(format!("tc-aud-{}", uuid::Uuid::new_v4().simple()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut flac = b"fLaC\0\0\0\x22".to_vec();
+        flac.resize(5_000, 1);
+        std::fs::write(dir.join("song.flac"), &flac).unwrap();
+        std::fs::write(dir.join("report.html"), b"<!doctype html><title>r</title>").unwrap();
+        let cwd = dir.to_string_lossy().to_string();
+        assert_eq!(resolve("song.flac", &cwd).unwrap().kind, "audio");
+        let html = resolve("report.html", &cwd).unwrap();
+        assert_eq!(html.kind, "html");
+        let r = read_media_range(&dir.join("song.flac"), Some("bytes=0-99")).unwrap();
+        assert_eq!((r.mime, r.data.len(), r.total), ("audio/flac", 100, 5_000));
+        assert!(read_media_range(&html.path, None).is_none(), "pages are never served");
+        assert!(read_image(&html.path).is_none(), "pages are never served");
+        assert_eq!(
+            extract_candidates("wrote out/song.flac and docs/report.html, see index.htm"),
+            vec!["out/song.flac", "docs/report.html", "index.htm"]
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn video_ranges() {
         assert_eq!(parse_range(Some("bytes=0-"), 100), Some((0, 99)));
         assert_eq!(parse_range(Some("bytes=10-19"), 100), Some((10, 19)));
@@ -822,13 +915,13 @@ mod tests {
         bytes.resize(10_000, 7);
         let v = dir.join("v.mp4");
         std::fs::write(&v, &bytes).unwrap();
-        let r = read_video_range(&v, Some("bytes=100-199")).unwrap();
+        let r = read_media_range(&v, Some("bytes=100-199")).unwrap();
         assert_eq!((r.start, r.total, r.data.len(), r.partial, r.mime), (100, 10_000, 100, true, "video/mp4"));
-        let r = read_video_range(&v, None).unwrap();
+        let r = read_media_range(&v, None).unwrap();
         assert_eq!((r.data.len(), r.partial), (10_000, false));
         assert!(read_image(&v).is_none(), "videos are never read whole");
         let res = resolve("v.mp4", &dir.to_string_lossy()).unwrap();
-        assert!(res.video);
+        assert_eq!(res.kind, "video");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

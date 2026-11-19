@@ -1,6 +1,6 @@
 import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { ImageOff, PanelRightClose, Play, Trash2 } from "lucide-react";
+import { Globe, ImageOff, Music, PanelRightClose, Play, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../api";
 import { useT } from "../i18n";
@@ -34,7 +34,10 @@ export function imageMenu(
   t: ReturnType<typeof useT>,
 ) {
   openContextMenu(e, [
-    { label: t("images.open"), onSelect: () => void openPath(item.path) },
+    {
+      label: item.kind === "html" ? t("images.openBrowser") : t("images.open"),
+      onSelect: () => void openPath(item.path),
+    },
     { label: t("images.reveal"), onSelect: () => void revealItemInDir(item.path) },
     { label: t("images.copyPath"), onSelect: () => void writeText(item.path) },
     ...(item.kind === "image"
@@ -162,7 +165,9 @@ function Thumb({ pid, item }: { pid: string; item: ImageItem }) {
         data-tip={item.path}
         onClick={() => {
           clearMark();
-          useStore.getState().set({ lightbox: { paneId: pid, id: item.id } });
+          // Pages open in the browser; they are never shown inside the app.
+          if (item.kind === "html") void openPath(item.path);
+          else useStore.getState().set({ lightbox: { paneId: pid, id: item.id } });
         }}
         onMouseEnter={mark}
         onMouseLeave={clearMark}
@@ -175,6 +180,11 @@ function Thumb({ pid, item }: { pid: string; item: ImageItem }) {
             <span className="imgthumb__missing">
               <ImageOff size={20} aria-hidden />
               {t("images.missing")}
+            </span>
+          ) : item.kind === "audio" || item.kind === "html" ? (
+            <span className={`imgthumb__icon imgthumb__icon--${item.kind}`}>
+              {item.kind === "audio" ? <Music size={28} aria-hidden /> : <Globe size={28} aria-hidden />}
+              <span>{item.name.split(".").pop()?.toUpperCase()}</span>
             </span>
           ) : item.kind === "video" ? (
             <>

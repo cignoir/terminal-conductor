@@ -118,7 +118,7 @@ export type HistoryProgress = {
 
 /** An image or video file Claude mentioned (see tc_core::images::ImageItem). */
 export type ImageItem = {
-  kind: "image" | "video";
+  kind: "image" | "video" | "audio" | "html";
   id: string;
   path: string;
   name: string;

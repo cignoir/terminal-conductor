@@ -554,7 +554,7 @@ fn serve_image(app: &AppHandle, uri_path: &str, range: Option<&str>) -> tauri::h
         return not_found();
     };
     if kind == "full"
-        && let Some(v) = tc_core::images::read_video_range(&path, range)
+        && let Some(v) = tc_core::images::read_media_range(&path, range)
     {
         let end = v.start + v.data.len() as u64 - 1;
         let mut res = Response::builder()
