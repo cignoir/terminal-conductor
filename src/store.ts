@@ -122,6 +122,7 @@ function normalizeProject(p: Partial<Project>, i: number): Project {
     tags: p.tags ?? [],
     autoStart: p.autoStart ?? false,
     shell: p.shell,
+    shellDir: p.shellDir,
     continueOnFirstOpen: p.continueOnFirstOpen,
     splitRatio: p.splitRatio ?? 0.72,
     imagesOpen: p.imagesOpen ?? false,
