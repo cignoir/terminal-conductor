@@ -22,6 +22,7 @@ const en = {
   "keys.newline": "New line in Claude's prompt",
   "keys.history": "Search past AI conversations",
   "keys.images": "Show or hide the media panel",
+  "keys.notes": "Show or hide the project notes",
 
   // Sidebar
   "sidebar.settings": "Settings (Ctrl+,)",
@@ -67,8 +68,13 @@ const en = {
 
   // Image panel
   "images.title": "Media",
-  "images.show": "Show images and videos",
-  "images.hide": "Hide images and videos",
+  "images.show": "Show media",
+  "images.hide": "Hide media",
+  "notes.title": "Notes",
+  "notes.show": "Show notes",
+  "notes.hide": "Hide notes",
+  "notes.placeholder": "Notes for this project: what's going on, what's next, commands to remember…",
+  "notes.hint": "Saved automatically. Removing the project from the list also deletes its notes.",
   "images.toggleNew": "Show images and videos ({n} new)",
   "images.empty": "Images, videos, audio and HTML files that Claude mentions in its replies in the top pane show up here. HTML files open in the browser.",
   "images.clear": "Clear the list",
@@ -271,6 +277,7 @@ const ja: Record<MessageKey, string> = {
   "keys.newline": "Claude の入力欄で改行",
   "keys.history": "過去の AI との会話を検索",
   "keys.images": "メディアパネルの表示・非表示",
+  "keys.notes": "メモの表示・非表示",
 
   "sidebar.settings": "設定 (Ctrl+,)",
   "sidebar.settingsUpdate": "設定 (Ctrl+,) — 更新があります",
@@ -313,8 +320,13 @@ const ja: Record<MessageKey, string> = {
 
   // 画像パネル
   "images.title": "メディア",
-  "images.show": "画像・動画を表示",
-  "images.hide": "画像・動画を隠す",
+  "images.show": "メディアを表示",
+  "images.hide": "メディアを隠す",
+  "notes.title": "メモ",
+  "notes.show": "メモを表示",
+  "notes.hide": "メモを隠す",
+  "notes.placeholder": "このプロジェクトのメモ（いまの状況、次にやること、覚えておきたいコマンドなど）",
+  "notes.hint": "自動で保存されます。プロジェクトを一覧から削除すると、メモも消えます。",
   "images.toggleNew": "画像・動画を表示（新しいもの {n} 件）",
   "images.empty": "上のペインの Claude が返答の中で触れた画像・動画・音声・HTML のファイルが、ここに並びます。HTML はブラウザで開きます。",
   "images.clear": "一覧を空にする",

@@ -1,7 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api";
-import { PROJECT_COLORS, folderName, shellDirOf, useStore } from "../store";
+import { PROJECT_COLORS, flushDocuments, folderName, shellDirOf, useStore } from "../store";
 import type { CloseAction, Project, ShellName } from "../types";
 import { applySettingsToAll } from "../terminal/cache";
 import { confirmDialog } from "../confirm";
@@ -536,7 +536,8 @@ export function CloseDialog() {
     set({ closePrompt: false });
     if (remember) setSettings({ closeAction: action });
     if (action === "tray") void hideToTray(t);
-    else void api.quit();
+    // Write notes typed in the last moment before the app goes away.
+    else void flushDocuments().finally(() => void api.quit());
   };
   return (
     <Modal

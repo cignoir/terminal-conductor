@@ -11,6 +11,7 @@ import {
   type Project,
   type SessionInfo,
   type Settings,
+  type SideTab,
   type StatusUpdate,
   type Workspace,
   paneId,
@@ -104,6 +105,11 @@ type Actions = {
   setFocusedRole: (projectId: string, role: PaneRole) => void;
   setImages: (paneId: string, items: ImageItem[]) => void;
   toggleImages: (projectId: string, open?: boolean) => void;
+  /** Shows a tab of the side panel, or hides the panel if that tab is showing. */
+  toggleSideTab: (projectId: string, tab: SideTab) => void;
+  /** Free-form notes per project id. */
+  notes: Record<string, string>;
+  setNote: (projectId: string, text: string) => void;
   set: (patch: Partial<State>) => void;
 };
 
@@ -126,6 +132,7 @@ function normalizeProject(p: Partial<Project>, i: number): Project {
     continueOnFirstOpen: p.continueOnFirstOpen,
     splitRatio: p.splitRatio ?? 0.72,
     imagesOpen: p.imagesOpen ?? false,
+    sideTab: p.sideTab,
     createdAt: p.createdAt ?? Date.now(),
   };
 }
@@ -227,6 +234,7 @@ export const useStore = create<Store>((set, get) => ({
   contextMenu: null,
   images: {},
   unseenImages: {},
+  notes: {},
   lightbox: null,
   closePrompt: false,
 
@@ -258,6 +266,7 @@ export const useStore = create<Store>((set, get) => ({
       workspace,
       settings: { ...DEFAULT_SETTINGS, ...((d.settings as object) ?? {}) },
       sessions: d.sessions ?? {},
+      notes: readNotes(d.notes),
       alive,
     });
   },
@@ -280,7 +289,10 @@ export const useStore = create<Store>((set, get) => ({
   removeProject: (id) => {
     const panes = (["claude", "shell"] as PaneRole[]).map((r) => paneId(id, r));
     get().closeProject(id);
-    set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }));
+    set((s) => {
+      const { [id]: _removed, ...notes } = s.notes;
+      return { projects: s.projects.filter((p) => p.id !== id), notes };
+    });
     // closeProject stops the panes gracefully; drop their state afterwards.
     void Promise.all(panes.map((p) => api.kill(p))).then(() =>
       panes.forEach((p) => void api.forget(p)),
@@ -459,6 +471,24 @@ export const useStore = create<Store>((set, get) => ({
     get().updateProject(projectId, { imagesOpen: next });
     if (next) set((s) => ({ unseenImages: { ...s.unseenImages, [projectId]: 0 } }));
   },
+
+  toggleSideTab: (projectId, tab) => {
+    const p = get().projects.find((x) => x.id === projectId);
+    if (!p) return;
+    const showing = p.imagesOpen && (p.sideTab ?? "media") === tab;
+    get().updateProject(projectId, { imagesOpen: !showing, sideTab: tab });
+    if (!showing && tab === "media") {
+      set((s) => ({ unseenImages: { ...s.unseenImages, [projectId]: 0 } }));
+    }
+  },
+
+  setNote: (projectId, text) =>
+    set((s) => {
+      const notes = { ...s.notes };
+      if (text) notes[projectId] = text;
+      else delete notes[projectId];
+      return { notes };
+    }),
 }));
 
 const docTimers: Record<string, number | undefined> = {};
@@ -472,13 +502,14 @@ export async function flushDocuments() {
     api.saveDoc("projects", { version: 1, projects: s.projects }),
     api.saveDoc("workspace", s.workspace),
     api.saveDoc("settings", s.settings),
+    api.saveDoc("notes", { version: 1, notes: s.notes }),
   ]);
 }
 
 // Persist documents shortly after they change.
 function persist<T>(
   select: (s: Store) => T,
-  name: "projects" | "workspace" | "settings",
+  name: "projects" | "workspace" | "settings" | "notes",
   wrap: (v: T) => unknown,
 ) {
   useStore.subscribe((s, prev) => {
@@ -493,3 +524,14 @@ function persist<T>(
 persist((s) => s.projects, "projects", (projects) => ({ version: 1, projects }));
 persist((s) => s.workspace, "workspace", (w) => w);
 persist((s) => s.settings, "settings", (v) => v);
+persist((s) => s.notes, "notes", (notes) => ({ version: 1, notes }));
+
+function readNotes(doc: unknown): Record<string, string> {
+  const notes = (doc as { notes?: unknown } | null)?.notes;
+  if (!notes || typeof notes !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(notes as Record<string, unknown>).filter(
+      (e): e is [string, string] => typeof e[1] === "string" && e[1] !== "",
+    ),
+  );
+}

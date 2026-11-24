@@ -184,7 +184,12 @@ export default function App() {
         e.preventDefault();
         e.stopPropagation();
         const id = s.workspace.activeProjectId;
-        if (id) s.toggleImages(id);
+        if (id) s.toggleSideTab(id, "media");
+      } else if (e.ctrlKey && e.shiftKey && !e.altKey && (e.key === "M" || e.key === "m")) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = s.workspace.activeProjectId;
+        if (id) s.toggleSideTab(id, "notes");
       } else if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
         s.set({ dialog: { kind: "settings" } });
@@ -253,6 +258,8 @@ export default function App() {
               <dd>{t("keys.history")}</dd>
               <dt>Ctrl+Shift+I</dt>
               <dd>{t("keys.images")}</dd>
+              <dt>Ctrl+Shift+M</dt>
+              <dd>{t("keys.notes")}</dd>
               <dt>Shift+Enter</dt>
               <dd>{t("keys.newline")}</dd>
             </dl>

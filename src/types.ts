@@ -26,8 +26,10 @@ export type Project = {
   continueOnFirstOpen?: boolean;
   /** Height of the Claude pane as a fraction of the project view. */
   splitRatio: number;
-  /** The image panel on the right is open. */
+  /** The side panel on the right is open. */
   imagesOpen?: boolean;
+  /** The tab the side panel shows. */
+  sideTab?: SideTab;
   createdAt: number;
 };
 
@@ -129,3 +131,5 @@ export type ImageItem = {
 
 export const paneId = (projectId: string, role: PaneRole) =>
   `${projectId}:${role}`;
+
+export type SideTab = "media" | "notes";

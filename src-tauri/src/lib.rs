@@ -144,6 +144,7 @@ struct InitData {
     projects: Value,
     workspace: Value,
     settings: Value,
+    notes: Value,
     sessions: std::collections::HashMap<String, SessionInfo>,
 }
 
@@ -163,13 +164,14 @@ fn app_init(state: State<'_, AppState>) -> InitData {
         projects: load_json(&file(&state, "projects.json")).unwrap_or(Value::Null),
         workspace: load_json(&file(&state, "workspace.json")).unwrap_or(Value::Null),
         settings: load_json(&file(&state, "settings.json")).unwrap_or(Value::Null),
+        notes: load_json(&file(&state, "notes.json")).unwrap_or(Value::Null),
         sessions: state.sessions.lock().map.clone(),
     }
 }
 
 #[tauri::command]
 fn save_doc(state: State<'_, AppState>, name: String, value: Value) -> Result<(), String> {
-    if !matches!(name.as_str(), "projects" | "workspace" | "settings") {
+    if !matches!(name.as_str(), "projects" | "workspace" | "settings" | "notes") {
         return Err(format!("unknown document {name}"));
     }
     save_json(&file(&state, &format!("{name}.json")), &value)

@@ -15,6 +15,7 @@ A Windows terminal app for people who run [Claude Code](https://code.claude.com/
 - **Bring your current conversations along**: a new project offers to continue the folder's latest Claude Code conversation with `claude --continue` (exit Claude in your other terminal first).
 - **Find where a conversation happened**: Ctrl+Shift+F searches your past conversations with Claude Code, Codex CLI and Antigravity CLI (`agy`) by words, file names, errors or folder, then opens that folder and resumes the conversation. Off until you turn it on; see [Conversation search](#conversation-search).
 - **See the media Claude mentions**: when Claude's reply in the top pane names an image, video, audio or HTML file (a screenshot it took, a chart it drew, a sound it rendered, a report page), it appears in a panel on the right. Click it to zoom, to play a video or audio, or to open an HTML file in the browser. The panel is closed until you open it (Ctrl+Shift+I); see [Media](#media).
+- **Notes per project**: the same panel has a Notes tab (Ctrl+Shift+M) for jotting down what's going on and what's next in each project. Notes are saved as you type, in `notes.json` next to the other settings.
 - **English and Japanese UI**: follows the Windows display language by default; switch in Settings.
 - **Automatic updates** from GitHub Releases. Download from Settings; the update is installed the next time you quit the app (or restart and update right away).
 - **Close button asks first**: the window's × asks whether to quit or minimize to the notification area, where every pane keeps running; click the tray icon to bring the window back. Settings can make it always minimize or always quit.
@@ -81,6 +82,7 @@ Press Ctrl+Shift+I (or the images button in the project header) to open the pane
 | Shift+Enter | New line in Claude's prompt |
 | Ctrl+Shift+F | Search past AI conversations |
 | Ctrl+Shift+I | Show or hide the media panel |
+| Ctrl+Shift+M | Show or hide the project notes |
 | Ctrl+, | Settings |
 | Right-click a project | Open in Explorer, open, edit, close |
 

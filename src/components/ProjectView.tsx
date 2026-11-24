@@ -7,7 +7,7 @@ import { TerminalPane, requestRestart } from "./TerminalPane";
 import { relativeTime } from "../util";
 import { confirmDialog } from "../confirm";
 import { useT } from "../i18n";
-import { FolderOpen, Images, Info, MessageSquarePlus, Pencil, RefreshCw } from "lucide-react";
+import { FolderOpen, Images, Info, MessageSquarePlus, NotebookPen, Pencil, RefreshCw } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { ImagePanel } from "./ImagePanel";
 
@@ -88,9 +88,12 @@ function ProjectHeader({ project }: { project: Project }) {
   const refreshGit = useStore((s) => s.refreshGit);
   const summarize = useStore((s) => s.summarize);
   const set = useStore((s) => s.set);
-  const toggleImages = useStore((s) => s.toggleImages);
+  const toggleSideTab = useStore((s) => s.toggleSideTab);
+  const hasNote = useStore((s) => !!s.notes[project.id]);
   const unseenImages = useStore((s) => s.unseenImages[project.id] ?? 0);
   const [infoOpen, setInfoOpen] = useState(false);
+  const mediaShowing = !!project.imagesOpen && (project.sideTab ?? "media") === "media";
+  const notesShowing = !!project.imagesOpen && project.sideTab === "notes";
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -144,15 +147,23 @@ function ProjectHeader({ project }: { project: Project }) {
             label={
               unseenImages > 0
                 ? t("images.toggleNew", { n: unseenImages })
-                : project.imagesOpen
+                : mediaShowing
                   ? t("images.hide")
                   : t("images.show")
             }
             shortcut="Ctrl+Shift+I"
-            active={!!project.imagesOpen}
+            active={mediaShowing}
             className={unseenImages > 0 ? "icon-btn--count" : undefined}
             data-count={unseenImages > 0 ? (unseenImages > 99 ? "99+" : String(unseenImages)) : undefined}
-            onClick={() => toggleImages(project.id)}
+            onClick={() => toggleSideTab(project.id, "media")}
+          />
+          <IconButton
+            icon={NotebookPen}
+            label={notesShowing ? t("notes.hide") : t("notes.show")}
+            shortcut="Ctrl+Shift+M"
+            active={notesShowing}
+            className={hasNote && !notesShowing ? "icon-btn--dot" : undefined}
+            onClick={() => toggleSideTab(project.id, "notes")}
           />
           <IconButton
             icon={Pencil}

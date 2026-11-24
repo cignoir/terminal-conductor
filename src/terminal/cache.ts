@@ -48,6 +48,7 @@ export function isAppShortcut(e: KeyboardEvent): boolean {
   if (e.ctrlKey && e.key === ",") return true;
   if (e.ctrlKey && e.shiftKey && (e.key === "F" || e.key === "f")) return true;
   if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) return true;
+  if (e.ctrlKey && e.shiftKey && (e.key === "M" || e.key === "m")) return true;
   return false;
 }
 

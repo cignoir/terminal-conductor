@@ -17,6 +17,7 @@ export type InitData = {
   projects: unknown;
   workspace: unknown;
   settings: unknown;
+  notes: unknown;
   sessions: Record<string, SessionInfo>;
 };
 
@@ -24,7 +25,7 @@ export type AttachResult = { attachId: number; replayed: number; alive: boolean 
 
 export const api = {
   init: () => invoke<InitData>("app_init"),
-  saveDoc: (name: "projects" | "workspace" | "settings", value: unknown) =>
+  saveDoc: (name: "projects" | "workspace" | "settings" | "notes", value: unknown) =>
     invoke<void>("save_doc", { name, value }),
   ensure: (args: {
     paneId: string;

@@ -4,8 +4,8 @@ import { Globe, ImageOff, Music, PanelRightClose, Play, Trash2 } from "lucide-re
 import { useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../api";
 import { useT } from "../i18n";
-import { useStore } from "../store";
-import { type ImageItem, type Project, paneId } from "../types";
+import { flushDocuments, useStore } from "../store";
+import { type ImageItem, type Project, type SideTab, paneId } from "../types";
 import { relativeTime } from "../util";
 import { confirmDialog } from "../confirm";
 import { openContextMenu } from "./ContextMenu";
@@ -52,14 +52,17 @@ export function imageMenu(
   ]);
 }
 
-/** The right-hand panel listing images Claude mentioned in the top pane. */
+/** The right-hand panel: media Claude mentioned in the top pane, and notes. */
 export function ImagePanel({ project }: { project: Project }) {
   const t = useT();
   const pid = paneId(project.id, "claude");
   const items = useStore((s) => s.images[pid] ?? EMPTY);
+  const hasNote = useStore((s) => !!s.notes[project.id]);
   const width = useStore((s) => s.settings.imagePanelWidth);
   const setSettings = useStore((s) => s.setSettings);
   const toggleImages = useStore((s) => s.toggleImages);
+  const updateProject = useStore((s) => s.updateProject);
+  const tab = project.sideTab ?? "media";
   const [drag, setDrag] = useState<number | null>(null);
   const dragging = drag !== null;
 
@@ -98,8 +101,21 @@ export function ImagePanel({ project }: { project: Project }) {
     useStore.getState().setImages(pid, []);
   };
 
+  const tabButton = (id: SideTab, label: string, extra?: React.ReactNode) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={tab === id}
+      className={`imgpanel__tab ${tab === id ? "imgpanel__tab--on" : ""}`}
+      onClick={() => updateProject(project.id, { sideTab: id })}
+    >
+      {label}
+      {extra}
+    </button>
+  );
+
   return (
-    <aside className="imgpanel" style={{ width }} aria-label={t("images.title")}>
+    <aside className="imgpanel" style={{ width }} aria-label={t(tab === "media" ? "images.title" : "notes.title")}>
       <div
         className="imgpanel__handle"
         title={t("images.resize")}
@@ -110,26 +126,33 @@ export function ImagePanel({ project }: { project: Project }) {
       />
       {drag !== null && <div className="imgpanel__ghost" style={{ left: window.innerWidth - drag }} />}
       <header className="imgpanel__head">
-        <span className="imgpanel__title">
-          {t("images.title")}
-          {items.length > 0 && <span className="muted"> {items.length}</span>}
-        </span>
-        <IconButton
-          icon={Trash2}
-          size={14}
-          label={t("images.clear")}
-          disabled={!items.length}
-          onClick={() => void clear()}
-        />
+        <div className="imgpanel__tabs" role="tablist">
+          {tabButton(
+            "media",
+            t("images.title"),
+            items.length > 0 && <span className="muted"> {items.length}</span>,
+          )}
+          {tabButton("notes", t("notes.title"), hasNote && <span className="imgpanel__dot" aria-hidden />)}
+        </div>
+        {tab === "media" && (
+          <IconButton
+            icon={Trash2}
+            size={14}
+            label={t("images.clear")}
+            disabled={!items.length}
+            onClick={() => void clear()}
+          />
+        )}
         <IconButton
           icon={PanelRightClose}
           size={14}
           label={t("images.close")}
-          shortcut="Ctrl+Shift+I"
           onClick={() => toggleImages(project.id, false)}
         />
       </header>
-      {items.length === 0 ? (
+      {tab === "notes" ? (
+        <NotesEditor projectId={project.id} />
+      ) : items.length === 0 ? (
         <p className="imgpanel__empty muted">{t("images.empty")}</p>
       ) : (
         <ul className="imgpanel__grid">
@@ -139,6 +162,28 @@ export function ImagePanel({ project }: { project: Project }) {
         </ul>
       )}
     </aside>
+  );
+}
+
+/** A plain text area for the project's notes, saved as you type. */
+function NotesEditor({ projectId }: { projectId: string }) {
+  const t = useT();
+  const text = useStore((s) => s.notes[projectId] ?? "");
+  const setNote = useStore((s) => s.setNote);
+  return (
+    <div className="notes">
+      <textarea
+        className="notes__text"
+        value={text}
+        onChange={(e) => setNote(projectId, e.target.value)}
+        // Save right away when leaving, in case the app quits soon after.
+        onBlur={() => void flushDocuments()}
+        placeholder={t("notes.placeholder")}
+        spellCheck={false}
+        aria-label={t("notes.title")}
+      />
+      <p className="notes__hint muted">{t("notes.hint")}</p>
+    </div>
   );
 }
 
