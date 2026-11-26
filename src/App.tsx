@@ -22,7 +22,7 @@ import { paneCwd, setNotifier, useStore } from "./store";
 import { startUpdater } from "./updater";
 import { parseOsc7501 } from "./terminal/osc7501";
 import { resolveLang, t as translateNow, useT } from "./i18n";
-import { focusTerminal } from "./terminal/cache";
+import { focusTerminal, redrawTerminal } from "./terminal/cache";
 import { type ImageItem, type StatusUpdate, paneId } from "./types";
 
 async function setupNotifications() {
@@ -190,6 +190,12 @@ export default function App() {
         e.stopPropagation();
         const id = s.workspace.activeProjectId;
         if (id) s.toggleSideTab(id, "notes");
+      } else if (e.ctrlKey && e.shiftKey && !e.altKey && (e.key === "R" || e.key === "r")) {
+        // Also keeps the webview from reloading in dev builds.
+        e.preventDefault();
+        e.stopPropagation();
+        const id = s.workspace.activeProjectId;
+        if (id) void redrawTerminal(paneId(id, s.focusedRole[id] ?? "claude"));
       } else if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
         s.set({ dialog: { kind: "settings" } });
@@ -260,6 +266,8 @@ export default function App() {
               <dd>{t("keys.images")}</dd>
               <dt>Ctrl+Shift+M</dt>
               <dd>{t("keys.notes")}</dd>
+              <dt>Ctrl+Shift+R</dt>
+              <dd>{t("keys.redraw")}</dd>
               <dt>Shift+Enter</dt>
               <dd>{t("keys.newline")}</dd>
             </dl>

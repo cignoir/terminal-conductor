@@ -49,6 +49,7 @@ export function isAppShortcut(e: KeyboardEvent): boolean {
   if (e.ctrlKey && e.shiftKey && (e.key === "F" || e.key === "f")) return true;
   if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) return true;
   if (e.ctrlKey && e.shiftKey && (e.key === "M" || e.key === "m")) return true;
+  if (e.ctrlKey && e.shiftKey && (e.key === "R" || e.key === "r")) return true;
   return false;
 }
 
@@ -294,6 +295,21 @@ export function applySettingsToAll(s: Settings) {
 
 export function focusTerminal(paneId: string) {
   entries.get(paneId)?.term.focus();
+}
+
+/**
+ * Makes the program in a pane draw its whole screen again by changing the
+ * PTY width by one column and back. Full-screen programs repaint on every
+ * resize, which clears text left in the wrong place.
+ */
+export async function redrawTerminal(paneId: string) {
+  const e = entries.get(paneId);
+  if (!e) return;
+  const { cols, rows } = e.term;
+  if (cols < 2) return;
+  await api.resize(paneId, cols - 1, rows).catch(() => {});
+  await new Promise((r) => window.setTimeout(r, 150));
+  await api.resize(paneId, cols, rows).catch(() => {});
 }
 
 export function clearTerminal(paneId: string) {

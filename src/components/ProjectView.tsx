@@ -7,8 +7,9 @@ import { TerminalPane, requestRestart } from "./TerminalPane";
 import { relativeTime } from "../util";
 import { confirmDialog } from "../confirm";
 import { useT } from "../i18n";
-import { FolderOpen, Images, Info, MessageSquarePlus, NotebookPen, Pencil, RefreshCw } from "lucide-react";
+import { FolderOpen, Images, Info, MessageSquarePlus, NotebookPen, Pencil, RefreshCw, ScreenShare } from "lucide-react";
 import { IconButton } from "./IconButton";
+import { redrawTerminal } from "../terminal/cache";
 import { ImagePanel } from "./ImagePanel";
 
 export function ProjectView({ project }: { project: Project }) {
@@ -142,6 +143,12 @@ function ProjectHeader({ project }: { project: Project }) {
             onClick={() => setInfoOpen((v) => !v)}
           />
           <IconButton icon={MessageSquarePlus} label={t("project.newConversationTip")} onClick={restartClaude} />
+          <IconButton
+            icon={ScreenShare}
+            label={t("project.redraw")}
+            shortcut="Ctrl+Shift+R"
+            onClick={() => void redrawTerminal(paneId(project.id, "claude"))}
+          />
           <IconButton
             icon={Images}
             label={

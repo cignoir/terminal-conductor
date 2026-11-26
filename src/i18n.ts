@@ -23,6 +23,7 @@ const en = {
   "keys.history": "Search past AI conversations",
   "keys.images": "Show or hide the media panel",
   "keys.notes": "Show or hide the project notes",
+  "keys.redraw": "Redraw the focused pane (when its text is out of place)",
 
   // Sidebar
   "sidebar.settings": "Settings (Ctrl+,)",
@@ -65,6 +66,7 @@ const en = {
   "pane.continueTip": "Continue this folder's latest conversation",
   "pane.newClaudeTip": "Start Claude with a new conversation",
   "project.edit": "Edit",
+  "project.redraw": "Redraw the top pane (when its text is out of place)",
 
   // Image panel
   "images.title": "Media",
@@ -278,6 +280,7 @@ const ja: Record<MessageKey, string> = {
   "keys.history": "過去の AI との会話を検索",
   "keys.images": "メディアパネルの表示・非表示",
   "keys.notes": "メモの表示・非表示",
+  "keys.redraw": "フォーカスのあるペインを描き直す（表示がずれたとき）",
 
   "sidebar.settings": "設定 (Ctrl+,)",
   "sidebar.settingsUpdate": "設定 (Ctrl+,) — 更新があります",
@@ -317,6 +320,7 @@ const ja: Record<MessageKey, string> = {
   "pane.continueTip": "このフォルダの直前の会話を続ける",
   "pane.newClaudeTip": "新しい会話で Claude を起動する",
   "project.edit": "編集",
+  "project.redraw": "上のペインを描き直す（表示がずれたとき）",
 
   // 画像パネル
   "images.title": "メディア",

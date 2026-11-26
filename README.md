@@ -83,6 +83,7 @@ Press Ctrl+Shift+I (or the images button in the project header) to open the pane
 | Ctrl+Shift+F | Search past AI conversations |
 | Ctrl+Shift+I | Show or hide the media panel |
 | Ctrl+Shift+M | Show or hide the project notes |
+| Ctrl+Shift+R | Redraw the focused pane, if its text ends up out of place |
 | Ctrl+, | Settings |
 | Right-click a project | Open in Explorer, open, edit, close |
 
