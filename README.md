@@ -102,6 +102,8 @@ Stored in `%APPDATA%\io.github.cignoir.terminal-conductor\`:
 | `tc-hooks.json` | Hook settings passed with `claude --settings` (rewritten at every start) |
 | `shell/` | Shell init files that define the `claude` alias (rewritten at every start) |
 
+The save-output button in the project header writes the top pane's recent output (up to 4 MB, raw, with the terminal sizes it was written for) to `%LOCALAPPDATA%\io.github.cignoir.terminal-conductor\captures\`, to investigate display problems. It holds whatever the pane showed, so look through it before sharing it.
+
 Uninstalling leaves this folder in place; delete it by hand if you no longer need it.
 
 ## Development

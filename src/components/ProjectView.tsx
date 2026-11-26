@@ -1,4 +1,5 @@
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { api } from "../api";
 import { useEffect, useRef, useState } from "react";
 import { lastMessage, projectStatus, useStore } from "../store";
 import { type Project, paneId } from "../types";
@@ -7,7 +8,7 @@ import { TerminalPane, requestRestart } from "./TerminalPane";
 import { relativeTime } from "../util";
 import { confirmDialog } from "../confirm";
 import { useT } from "../i18n";
-import { FolderOpen, Images, Info, MessageSquarePlus, NotebookPen, Pencil, RefreshCw, ScreenShare } from "lucide-react";
+import { FileDown, FolderOpen, Images, Info, MessageSquarePlus, NotebookPen, Pencil, RefreshCw, ScreenShare } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { redrawTerminal } from "../terminal/cache";
 import { ImagePanel } from "./ImagePanel";
@@ -108,6 +109,19 @@ function ProjectHeader({ project }: { project: Project }) {
     };
   }, [project.id, refreshGit]);
 
+  const captureOutput = async () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    try {
+      const path = await api.capture(paneId(project.id, "claude"), `${project.name}-top-${stamp}`);
+      set({ notice: t("project.captureSaved", { path }) });
+      void revealItemInDir(path).catch(() => {});
+    } catch (e) {
+      set({ notice: t("project.captureFailed", { error: String(e) }) });
+    }
+  };
+
   const restartClaude = async () => {
     if (!(await confirmDialog(t("project.confirmNewConversation")))) return;
     requestRestart(paneId(project.id, "claude"), true);
@@ -149,6 +163,7 @@ function ProjectHeader({ project }: { project: Project }) {
             shortcut="Ctrl+Shift+R"
             onClick={() => void redrawTerminal(paneId(project.id, "claude"))}
           />
+          <IconButton icon={FileDown} label={t("project.capture")} onClick={() => void captureOutput()} />
           <IconButton
             icon={Images}
             label={

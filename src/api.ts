@@ -48,6 +48,8 @@ export const api = {
     invoke<void>("pane_write", { paneId, data }),
   resize: (paneId: string, cols: number, rows: number) =>
     invoke<void>("pane_resize", { paneId, cols, rows }),
+  capture: (paneId: string, name: string) =>
+    invoke<string>("pane_capture", { paneId, name }),
   kill: (paneId: string) => invoke<void>("pane_kill", { paneId }),
   forget: (paneId: string) => invoke<void>("pane_forget", { paneId }),
   alive: () => invoke<string[]>("panes_alive"),

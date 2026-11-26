@@ -345,6 +345,40 @@ fn pane_resize(
     state.pty.resize(&pane_id, cols, rows)
 }
 
+/// Saves the pane's buffered output (raw bytes, as the console host sent
+/// them) and the terminal sizes it was written for, to troubleshoot display
+/// problems. Returns the path of the saved output.
+#[tauri::command]
+fn pane_capture(state: State<'_, AppState>, pane_id: String, name: String) -> Result<String, String> {
+    let capture = state
+        .pty
+        .capture(&pane_id)
+        .ok_or_else(|| format!("unknown pane {pane_id}"))?;
+    let name: String = name
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect();
+    if name.is_empty() {
+        return Err("empty name".into());
+    }
+    let dir = state
+        .history_path
+        .parent()
+        .map(|p| p.join("captures"))
+        .ok_or("no data folder")?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let out = dir.join(format!("{name}.bin"));
+    std::fs::write(&out, &capture.data).map_err(|e| e.to_string())?;
+    let meta = serde_json::json!({
+        "paneId": pane_id,
+        "bytes": capture.data.len(),
+        "start": capture.start,
+        "sizes": capture.sizes,
+    });
+    save_json(&dir.join(format!("{name}.json")), &meta)?;
+    Ok(out.to_string_lossy().to_string())
+}
+
 /// Stops the pane's processes, letting Claude Code exit cleanly first.
 #[tauri::command]
 async fn pane_kill(app: AppHandle, pane_id: String) {
@@ -876,6 +910,7 @@ pub fn run() {
             pane_detach,
             pane_write,
             pane_resize,
+            pane_capture,
             pane_kill,
             pane_forget,
             panes_alive,

@@ -67,6 +67,9 @@ const en = {
   "pane.newClaudeTip": "Start Claude with a new conversation",
   "project.edit": "Edit",
   "project.redraw": "Redraw the top pane (when its text is out of place)",
+  "project.capture": "Save the top pane's recent output (to investigate display problems)",
+  "project.captureSaved": "Saved the output: {path}",
+  "project.captureFailed": "Could not save the output: {error}",
 
   // Image panel
   "images.title": "Media",
@@ -321,6 +324,9 @@ const ja: Record<MessageKey, string> = {
   "pane.newClaudeTip": "新しい会話で Claude を起動する",
   "project.edit": "編集",
   "project.redraw": "上のペインを描き直す（表示がずれたとき）",
+  "project.capture": "上のペインの直近の出力を保存する（表示の不具合を調べるため）",
+  "project.captureSaved": "出力を保存しました: {path}",
+  "project.captureFailed": "出力を保存できませんでした: {error}",
 
   // 画像パネル
   "images.title": "メディア",

@@ -37,16 +37,68 @@ struct Replay {
     data: VecDeque<u8>,
     cap: usize,
     subscriber: Option<(u64, OutputFn)>,
+    /// Bytes ever pushed, so positions survive trimming.
+    total: u64,
+    /// Size changes as (stream position, cols, rows), oldest first.
+    sizes: VecDeque<SizeMark>,
 }
 
 impl Replay {
+    fn new(cap: usize) -> Self {
+        Self {
+            data: VecDeque::new(),
+            cap,
+            subscriber: None,
+            total: 0,
+            sizes: VecDeque::new(),
+        }
+    }
+
     fn push(&mut self, chunk: &[u8]) {
         self.data.extend(chunk);
+        self.total += chunk.len() as u64;
         if self.data.len() > self.cap {
             let excess = self.data.len() - self.cap;
             self.data.drain(..excess);
         }
+        // Keep the last size before the buffer start; it is the size the
+        // oldest buffered byte was written for.
+        let start = self.start();
+        while self.sizes.len() > 1 && self.sizes[1].at <= start {
+            self.sizes.pop_front();
+        }
     }
+
+    fn mark_size(&mut self, cols: u16, rows: u16) {
+        let mark = SizeMark { at: self.total, cols, rows };
+        // Sizes with no output in between don't matter; keep the last one so
+        // a resize animation doesn't pile up marks.
+        match self.sizes.back_mut() {
+            Some(last) if last.at == mark.at => *last = mark,
+            _ => self.sizes.push_back(mark),
+        }
+    }
+
+    /// Stream position of the oldest buffered byte.
+    fn start(&self) -> u64 {
+        self.total - self.data.len() as u64
+    }
+}
+
+/// A terminal size that applies to the output from `at` onwards.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct SizeMark {
+    pub at: u64,
+    pub cols: u16,
+    pub rows: u16,
+}
+
+/// The buffered output of a pane, for troubleshooting display problems.
+pub struct Capture {
+    pub data: Vec<u8>,
+    /// Stream position of `data[0]`.
+    pub start: u64,
+    pub sizes: Vec<SizeMark>,
 }
 
 type SharedWriter = Arc<Mutex<Option<Box<dyn Write + Send>>>>;
@@ -143,18 +195,8 @@ impl PtyManager {
             .take_writer()
             .map_err(|e| format!("writer failed: {e}"))?;
 
-        let replay = self
-            .replays
-            .lock()
-            .entry(spec.pane_id.clone())
-            .or_insert_with(|| {
-                Arc::new(Mutex::new(Replay {
-                    data: VecDeque::new(),
-                    cap: self.replay_cap,
-                    subscriber: None,
-                }))
-            })
-            .clone();
+        let replay = self.replay(&spec.pane_id);
+        replay.lock().mark_size(spec.cols.max(10), spec.rows.max(2));
 
         let alive = Arc::new(AtomicBool::new(true));
         let pane = Arc::new(Pane {
@@ -212,17 +254,44 @@ impl PtyManager {
     pub fn resize(&self, pane_id: &str, cols: u16, rows: u16) -> Result<(), String> {
         let pane = self.get(pane_id)?;
         let m = pane.master.lock();
+        let (cols, rows) = (cols.max(10), rows.max(2));
         match m.as_ref() {
-            Some(m) => m
-                .resize(PtySize {
-                    rows: rows.max(2),
-                    cols: cols.max(10),
+            Some(m) => {
+                m.resize(PtySize {
+                    rows,
+                    cols,
                     pixel_width: 0,
                     pixel_height: 0,
                 })
-                .map_err(|e| e.to_string()),
+                .map_err(|e| e.to_string())?;
+                self.replay(pane_id).lock().mark_size(cols, rows);
+                Ok(())
+            }
             None => Ok(()),
         }
+    }
+
+    /// A copy of the pane's buffered output and the sizes it was written for.
+    pub fn capture(&self, pane_id: &str) -> Option<Capture> {
+        let replay = self.replays.lock().get(pane_id)?.clone();
+        let r = replay.lock();
+        let (a, b) = r.data.as_slices();
+        let mut data = Vec::with_capacity(a.len() + b.len());
+        data.extend_from_slice(a);
+        data.extend_from_slice(b);
+        Some(Capture {
+            data,
+            start: r.start(),
+            sizes: r.sizes.iter().copied().collect(),
+        })
+    }
+
+    fn replay(&self, pane_id: &str) -> Arc<Mutex<Replay>> {
+        self.replays
+            .lock()
+            .entry(pane_id.to_string())
+            .or_insert_with(|| Arc::new(Mutex::new(Replay::new(self.replay_cap))))
+            .clone()
     }
 
     pub fn kill(&self, pane_id: &str) {
@@ -249,18 +318,7 @@ impl PtyManager {
     /// previous subscriber. Returns an attach id for `detach` and the number
     /// of replayed bytes.
     pub fn attach(&self, pane_id: &str, out: OutputFn) -> (u64, usize) {
-        let replay = self
-            .replays
-            .lock()
-            .entry(pane_id.to_string())
-            .or_insert_with(|| {
-                Arc::new(Mutex::new(Replay {
-                    data: VecDeque::new(),
-                    cap: self.replay_cap,
-                    subscriber: None,
-                }))
-            })
-            .clone();
+        let replay = self.replay(pane_id);
         let id = self.next_attach.fetch_add(1, Ordering::SeqCst);
         let mut r = replay.lock();
         let replayed = r.data.len();
@@ -397,5 +455,38 @@ mod job {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn replay_keeps_the_sizes_that_cover_the_buffer() {
+        let mut r = Replay::new(10);
+        r.mark_size(80, 24);
+        r.push(b"abcdef");
+        r.mark_size(100, 30);
+        r.push(b"ghij");
+        assert_eq!(r.start(), 0);
+        assert_eq!(r.sizes.len(), 2);
+        // Trims "abcd": the 80x24 mark still covers "ef".
+        r.push(b"klmn");
+        assert_eq!(r.start(), 4);
+        assert_eq!(r.sizes.len(), 2);
+        // Trims past position 6: only the 100x30 mark is left.
+        r.push(b"opqrst");
+        assert_eq!(r.start(), 10);
+        assert_eq!(
+            r.sizes.iter().copied().collect::<Vec<_>>(),
+            vec![SizeMark { at: 6, cols: 100, rows: 30 }]
+        );
+        assert_eq!(r.data.iter().copied().collect::<Vec<_>>(), b"klmnopqrst");
+        // Resizes with no output in between collapse into the last one.
+        r.mark_size(90, 30);
+        r.mark_size(80, 30);
+        assert_eq!(r.sizes.back(), Some(&SizeMark { at: 20, cols: 80, rows: 30 }));
+        assert_eq!(r.sizes.len(), 2);
     }
 }
