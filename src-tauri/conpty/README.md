@@ -9,7 +9,10 @@ Why: the ConPTY built into Windows measures an emoji joined with ZWJ
 (for example U+1F647 U+200D U+2640 U+FE0F) as five cells, while Claude
 Code and other CLIs draw it as two. The mismatch shifts the rest of the
 screen on every redraw. This version measures grapheme clusters as
-single characters, as xterm.js does with the unicode-graphemes addon.
+single characters, as xterm.js does with the unicode-graphemes addon,
+but only when it is asked to: portable-pty is patched to pass
+`PSEUDOCONSOLE_GLYPH_WIDTH_GRAPHEMES`, so `conpty.dll` starts OpenConsole
+with `--textMeasurement graphemes` (see `vendor/README.md`).
 
 | | |
 |---|---|
